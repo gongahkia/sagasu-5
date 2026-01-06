@@ -1,0 +1,6 @@
+figure out how to make sagasu-5 distributable and downloadble as a macos menu bar app
+add ci/cd or auto-release on the github repo?
+test it works
+make the architecture diagram with diagramsascode python library
+take screenshots
+fill up the empty parts of the README.md
