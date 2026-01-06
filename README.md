@@ -2,6 +2,10 @@
 
 # `Sagasu 5`
 
+<p align="center">
+    <img src="./asset/logo/logo-five.png" width=55% height=55%>
+</p>
+
 Run [it](#other-notes) back *(but as a [MacOS](https://www.apple.com/os/macos/) menu bar app)*.
 
 ## Stack
