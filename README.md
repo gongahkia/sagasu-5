@@ -24,8 +24,10 @@ See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github
 
 ## Screenshots
 
-![](./asset/reference/1.png)  
-![](./asset/reference/2.png)  
+<div align="center">
+    <img src="./asset/reference/1.png" width="48%">
+    <img src="./asset/reference/2.png" width="48%">
+</div>
 
 ## Usage
 
