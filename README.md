@@ -21,7 +21,67 @@ See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github
 
 ## Architecture
 
-![](./asset/reference/architecture.png)
+```mermaid
+flowchart LR
+  %% Sagasu 5 - Architecture-as-code (Mermaid)
+
+  %% ===== Styles =====
+  classDef app fill:#E8F2FF,stroke:#5B8DEF,stroke-width:1px,color:#0B1F44;
+  classDef service fill:#EFFFF5,stroke:#3AA76D,stroke-width:1px,color:#062A17;
+  classDef data fill:#FFF6E5,stroke:#D49B3A,stroke-width:1px,color:#3B2103;
+  classDef external fill:#F4F5F7,stroke:#8A8F98,stroke-width:1px,color:#1F2328;
+  classDef user fill:#F2E9FF,stroke:#7B61FF,stroke-width:1px,color:#20124D;
+
+  %% ===== User / Device =====
+  subgraph mac[macOS Device]
+    U[User]
+    class U user
+
+    subgraph s5[Sagasu 5 - Menu Bar App]
+      MB[MenuBarExtra - SwiftUI]
+      UI[ContentView - Menu UI]
+      AS[AppState\n- schedules refresh\n- holds published state\n- computes menu title]
+      class MB,UI,AS app
+    end
+  end
+
+  U -->|clicks menu bar icon| MB
+  MB --> UI
+  UI <-->|observes| AS
+
+  %% ===== Networking / Fetch =====
+  subgraph net[Fetch + Decode]
+    SCHED[Daily refresh @ 08:15 SGT\nmanual refresh]
+    HTTP[URLSession GET\n3 endpoints in parallel]
+    DEC[JSONDecoder\ndecode into Models.swift]
+    class SCHED,HTTP,DEC service
+  end
+
+  AS --> SCHED
+  SCHED --> HTTP
+  HTTP --> DEC
+  DEC --> AS
+
+  %% ===== Data Source (external) =====
+  subgraph ext[External data producer: Sagasu 4]
+    CRON[GitHub Actions - cron]
+    SCRAPE[Scraper job\ncollects rooms/bookings/tasks]
+    REPO[(GitHub repo: sagasu-4\nbackend/log/*.json)]
+    class CRON,SCRAPE external
+    class REPO data
+
+    CRON --> SCRAPE
+    SCRAPE -->|commits JSON logs| REPO
+  end
+
+  %% ===== Consumption =====
+  REPO -->|raw.githubusercontent.com\nGET scraped_log.json| HTTP
+  REPO -->|raw.githubusercontent.com\nGET scraped_bookings.json| HTTP
+  REPO -->|raw.githubusercontent.com\nGET scraped_tasks.json| HTTP
+
+  %% ===== Notes =====
+  AS -.->|updates menu title\ne.g. x/y free| MB
+```
 
 ## Screenshots
 
