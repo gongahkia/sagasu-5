@@ -31,9 +31,9 @@ See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github
 
 ## Usage
 
-Note that `Sagasu 5` *(like `Sagasu 4`)* was primarily made for my own use.
+Note that `Sagasu 5` *(like `Sagasu 4`)* was primarily made for my own use. The most immediate and easiest way for others to access `Sagasu 5` is via [direct download](https://support.apple.com/en-us/102662) of the `Sagasu.dmg` [here]().
 
-The below instructions are for locally hosting and running `Sagasu 5`.
+If you are interested in cloning and building `Sagasu 5` yourself, the below instructions are for you.
 
 1. First execute the below to install the repository on your local machine.
 
