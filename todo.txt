@@ -1,0 +1,5 @@
+add a quit page on the app
+add a loading page right after the app starts
+add preferences as necessary
+ensure it can deploy on most macos platforms
+add a default installer
