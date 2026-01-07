@@ -1,5 +1,5 @@
 [![](https://img.shields.io/badge/sagasu_5.0.0-passing-green)](https://github.com/gongahkia/sagasu-5/releases/tag/5.0.0)
-![](https://github.com/gongahkia/sagasu-5/actions/workflows/release-dma.yml/badge.svg)
+![](https://github.com/gongahkia/sagasu-5/actions/workflows/release-dmg.yml/badge.svg)
 
 # `Sagasu 5`
 
