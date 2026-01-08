@@ -2,13 +2,13 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    @State private var showDetails: Bool = false
-    @State private var showPreferences: Bool = false
 
     @AppStorage("showRoomsCard") private var showRoomsCard: Bool = true
     @AppStorage("showBookingsCard") private var showBookingsCard: Bool = true
     @AppStorage("showTasksCard") private var showTasksCard: Bool = true
     @AppStorage("showDetailsCard") private var showDetailsCard: Bool = true
+
+    @State private var isPreferencesExpanded: Bool = false
 
     private var header: some View {
         Text("Sagasu 5") 
@@ -51,37 +51,48 @@ struct ContentView: View {
                     detailsSection
                 }
 
-                Spacer(minLength: 12)
+                Divider()
+                    .padding(.top, 8)
 
-                VStack(spacing: 0) {
-                    Divider()
+                AlfredButton(
+                    title: "Preferences",
+                    action: { withAnimation(.easeInOut(duration: 0.2)) { isPreferencesExpanded.toggle() } },
+                    showChevron: true,
+                    isExpanded: isPreferencesExpanded
+                )
 
-                    AlfredButton(title: "Preferences", action: { showPreferences = true })
-
-                    Divider()
-
-                    AlfredButton(title: "Quit", action: { NSApplication.shared.terminate(nil) })
-
-                    Divider()
-                        .padding(.bottom, 8)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Last fetch: \(appState.formattedLastRefresh)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Data updates daily at 8:00 AM SGT")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                if isPreferencesExpanded {
+                    VStack(spacing: 10) {
+                        PreferenceToggleRow(label: "Rooms", isOn: $showRoomsCard)
+                        PreferenceToggleRow(label: "Bookings", isOn: $showBookingsCard)
+                        PreferenceToggleRow(label: "Tasks", isOn: $showTasksCard)
+                        PreferenceToggleRow(label: "Details", isOn: $showDetailsCard)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(6)
                     .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 4)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
-                .background(Color(NSColor.windowBackgroundColor))
-                .padding(.bottom, 4)
-            }
-            .sheet(isPresented: $showPreferences) {
-                PreferencesView()
+
+                AlfredButton(title: "Quit", action: { NSApplication.shared.terminate(nil) })
+
+                Divider()
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Last fetch: \(appState.formattedLastRefresh)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Data updates daily at 8:00 AM SGT")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
             }
             .padding(12)
         }
@@ -262,9 +273,27 @@ private struct RoomsList: View {
     }
 }
 
+private struct PreferenceToggleRow: View {
+    let label: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.callout)
+            Spacer()
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+    }
+}
+
 private struct AlfredButton: View {
     let title: String
     let action: () -> Void
+    var showChevron: Bool = false
+    var isExpanded: Bool = false
     @State private var isHovered: Bool = false
 
     var body: some View {
@@ -272,11 +301,19 @@ private struct AlfredButton: View {
             HStack {
                 Text(title)
                     .foregroundColor(.primary)
+                    .font(.callout)
                 Spacer()
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .padding(.horizontal, 12)
-            .background(isHovered ? Color.accentColor.opacity(0.15) : Color.clear)
+            .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())

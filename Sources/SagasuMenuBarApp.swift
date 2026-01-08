@@ -4,19 +4,10 @@ import SwiftUI
 struct SagasuMenuBarApp: App {
 	@StateObject private var appState = AppState()
 
-	@AppStorage("hasSeenOnboarding") private var showLanding = true
-
 	var body: some Scene {
 		MenuBarExtra {
-			ZStack {
-				ContentView()
-					.environmentObject(appState)
-					.opacity(showLanding ? 0 : 1)
-				if showLanding {
-					LandingView(onDismiss: { showLanding = false })
-						.transition(.opacity)
-				}
-			}
+			ContentView()
+				.environmentObject(appState)
 		} label: {
 			MenuBarLabelView(appState: appState)
 		}
