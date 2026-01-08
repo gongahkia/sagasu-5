@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @State private var showDetails: Bool = false
     @State private var showPreferences: Bool = false
+    @State private var showDisclaimer: Bool = true
 
     @AppStorage("showRoomsCard") private var showRoomsCard: Bool = true
     @AppStorage("showBookingsCard") private var showBookingsCard: Bool = true
@@ -28,54 +29,109 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header
+        ZStack {
+            // Main content
+            if !showDisclaimer {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        header
 
-                if let errorMessage = appState.errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                        if let errorMessage = appState.errorMessage {
+                            Label(errorMessage, systemImage: "exclamationmark.triangle")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
 
-                summaryGrid
+                        summaryGrid
 
-                if showRoomsCard { roomsSection }
-                if showBookingsCard { bookingsSection }
-                if showTasksCard { tasksSection }
-                if showDetailsCard {
-                    DisclosureGroup("Details", isExpanded: $showDetails) {
-                        detailsSection
+                        if showRoomsCard { roomsSection }
+                        if showBookingsCard { bookingsSection }
+                        if showTasksCard { tasksSection }
+                        if showDetailsCard {
+                            DisclosureGroup("Details", isExpanded: $showDetails) {
+                                detailsSection
+                            }
+                            .font(.callout)
+                        }
+
+                        Spacer()
+
+                        Divider()
+                        HStack(spacing: 0) {
+                            Button("Preferences") {
+                                showPreferences = true
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.clear)
+                            .foregroundColor(.primary)
+
+                            Divider().frame(height: 20)
+
+                            Button("Quit") {
+                                NSApplication.shared.terminate(nil)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.clear)
+                            .foregroundColor(.primary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .background(Color(NSColor.windowBackgroundColor))
+                        .cornerRadius(8)
+                        .padding(.bottom, 4)
                     }
-                    .font(.callout)
-                }
-
-                // Assuming you have a footer property or view
-                // footer
-
-                Divider()
-                HStack {
-                    Spacer()
-                    Button {
-                        showPreferences = true
-                    } label: {
-                        Label("Preferences", systemImage: "gearshape")
+                    .sheet(isPresented: $showPreferences) {
+                        PreferencesView()
                     }
-                    .buttonStyle(.bordered)
-                    Button {
-                        NSApplication.shared.terminate(nil)
-                    } label: {
-                        Label("Quit", systemImage: "power")
-                    }
-                    .buttonStyle(.borderedProminent)
+                    .padding(12)
                 }
+                .frame(width: 420, height: 560)
             }
-            .sheet(isPresented: $showPreferences) {
-                PreferencesView()
+
+            // Disclaimer modal
+            if showDisclaimer {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                VStack(spacing: 24) {
+                    Text("Welcome to Sagasu 5")
+                        .font(.largeTitle).bold()
+                        .multilineTextAlignment(.center)
+                    ScrollView {
+                        VStack(alignment: .center, spacing: 16) {
+                            Text("Legal Disclaimer")
+                                .font(.title2).bold()
+                                .multilineTextAlignment(.center)
+                            Text("This application is provided 'as is' without any warranties, expressed or implied. The developers and distributors of Sagasu 5 are not liable for any damages or losses resulting from the use of this software. All data is provided for informational purposes only and may not be accurate or up to date. Use at your own risk.")
+                                .multilineTextAlignment(.center)
+                            Text("Informatic")
+                                .font(.title2).bold()
+                                .multilineTextAlignment(.center)
+                            Text("Sagasu 5 is a menu bar app for macOS that displays room, booking, and task information. Data is fetched from public sources and may be subject to change.")
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.horizontal, 32)
+                    }
+                    Button("Continue") {
+                        showDisclaimer = false
+                    }
+                    .font(.headline)
+                    .padding(.horizontal, 40)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+                .frame(maxWidth: 480)
+                .padding(.vertical, 60)
+                .background(Color(NSColor.windowBackgroundColor))
+                .cornerRadius(16)
+                .shadow(radius: 20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(12)
         }
-        .frame(width: 420, height: 560)
     }
 
     var roomsSection: some View {
@@ -93,16 +149,6 @@ struct ContentView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-                    Divider()
-                    HStack {
-                        Spacer()
-                        Button {
-                            NSApplication.shared.terminate(nil)
-                        } label: {
-                            Label("Quit", systemImage: "power")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
         }
     }
 
