@@ -12,7 +12,7 @@ struct ContentView: View {
     @AppStorage("showDetailsCard") private var showDetailsCard: Bool = true
 
     private var header: some View {
-        Text("Header") // Replace with your actual header view
+        Text("Sagasu 5") 
     }
 
     private var columns: [GridItem] {
@@ -48,37 +48,38 @@ struct ContentView: View {
                         if showBookingsCard { bookingsSection }
                         if showTasksCard { tasksSection }
                         if showDetailsCard {
-                            DisclosureGroup("Details", isExpanded: $showDetails) {
-                                detailsSection
-                            }
-                            .font(.callout)
+                            Text("Scraping details")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            detailsSection
                         }
 
-                        Spacer()
+                        Spacer(minLength: 12)
 
-                        Divider()
-                        HStack(spacing: 0) {
+                        VStack(spacing: 0) {
+                            Divider()
                             Button("Preferences") {
                                 showPreferences = true
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.clear)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 18)
+                            .background(Color(NSColor.windowBackgroundColor))
                             .foregroundColor(.primary)
 
-                            Divider().frame(height: 20)
-
+                            Divider()
                             Button("Quit") {
                                 NSApplication.shared.terminate(nil)
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.clear)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 18)
+                            .background(Color(NSColor.windowBackgroundColor))
                             .foregroundColor(.primary)
                         }
-                        .frame(maxWidth: .infinity)
                         .background(Color(NSColor.windowBackgroundColor))
                         .cornerRadius(8)
                         .padding(.bottom, 4)
