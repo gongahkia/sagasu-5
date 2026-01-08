@@ -2,7 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    @State private var showDetails: Bool = false
+        @State private var showDetails: Bool = false
+        @State private var showPreferences: Bool = false
 
     var body: some View {
         ScrollView {
@@ -19,56 +20,60 @@ struct ContentView: View {
 
                 roomsSection
 
-                bookingsSection
+                @AppStorage("showRoomsCard") private var showRoomsCard: Bool = true
+                @AppStorage("showBookingsCard") private var showBookingsCard: Bool = true
+                @AppStorage("showTasksCard") private var showTasksCard: Bool = true
+                @AppStorage("showDetailsCard") private var showDetailsCard: Bool = true
 
-                tasksSection
+                var body: some View {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            header
 
-                DisclosureGroup("Details", isExpanded: $showDetails) {
-                    detailsSection
+                            if let errorMessage = appState.errorMessage {
+                                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            summaryGrid
+
+                            if showRoomsCard { roomsSection }
+                            if showBookingsCard { bookingsSection }
+                            if showTasksCard { tasksSection }
+                            if showDetailsCard {
+                                DisclosureGroup("Details", isExpanded: $showDetails) {
+                                    detailsSection
+                                }
+                                .font(.callout)
+                            }
+
+                            footer
+
+                            Divider()
+                            HStack {
+                                Spacer()
+                                Button {
+                                    showPreferences = true
+                                } label: {
+                                    Label("Preferences", systemImage: "gearshape")
+                                }
+                                .buttonStyle(.bordered)
+                                Button {
+                                    NSApplication.shared.terminate(nil)
+                                } label: {
+                                    Label("Quit", systemImage: "power")
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                        .sheet(isPresented: $showPreferences) {
+                            PreferencesView()
+                        }
+                        .padding(12)
+                    }
+                    .frame(width: 420, height: 560)
                 }
-                .font(.callout)
-
-                footer
-            }
-            .padding(12)
-        }
-        .frame(width: 420, height: 560)
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Sagasu 5")
-                .font(.headline)
-
-            Spacer()
-
-            if appState.isLoading {
-                ProgressView()
-                    .controlSize(.small)
-            }
-        }
-    }
-
-    private var footer: some View {
-        Group {
-            Divider()
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Last fetch: \(appState.formattedLastRefresh)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Text("Data updates daily at 8:00 AM SGT")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-}
-
-private extension ContentView {
-    var summaryGrid: some View {
-        let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
-
         return LazyVGrid(columns: columns, spacing: 10) {
             SummaryTile(title: "Free now", value: String(appState.rooms?.statistics.available_rooms ?? 0), tooltip: "Fully available rooms")
             SummaryTile(title: "Partial", value: String(appState.rooms?.statistics.partially_available_rooms ?? 0), tooltip: "Some slots available")
@@ -92,6 +97,16 @@ private extension ContentView {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+                    Divider()
+                    HStack {
+                        Spacer()
+                        Button {
+                            NSApplication.shared.terminate(nil)
+                        } label: {
+                            Label("Quit", systemImage: "power")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
         }
     }
 
