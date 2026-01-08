@@ -4,7 +4,7 @@ import SwiftUI
 struct SagasuMenuBarApp: App {
 	@StateObject private var appState = AppState()
 
-	@State private var showLanding = true
+	@AppStorage("hasSeenOnboarding") private var showLanding = true
 
 	var body: some Scene {
 		MenuBarExtra {

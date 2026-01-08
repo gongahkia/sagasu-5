@@ -4,7 +4,6 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @State private var showDetails: Bool = false
     @State private var showPreferences: Bool = false
-    @State private var showDisclaimer: Bool = true
 
     @AppStorage("showRoomsCard") private var showRoomsCard: Bool = true
     @AppStorage("showBookingsCard") private var showBookingsCard: Bool = true
@@ -29,110 +28,64 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Main content
-            if !showDisclaimer {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        header
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                header
 
-                        if let errorMessage = appState.errorMessage {
-                            Label(errorMessage, systemImage: "exclamationmark.triangle")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        summaryGrid
-
-                        if showRoomsCard { roomsSection }
-                        if showBookingsCard { bookingsSection }
-                        if showTasksCard { tasksSection }
-                        if showDetailsCard {
-                            Text("Scraping details")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 8)
-                            detailsSection
-                        }
-
-                        Spacer(minLength: 12)
-
-                        VStack(spacing: 0) {
-                            Divider()
-                            Button("Preferences") {
-                                showPreferences = true
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 18)
-                            .background(Color(NSColor.windowBackgroundColor))
-                            .foregroundColor(.primary)
-
-                            Divider()
-                            Button("Quit") {
-                                NSApplication.shared.terminate(nil)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 18)
-                            .background(Color(NSColor.windowBackgroundColor))
-                            .foregroundColor(.primary)
-                        }
-                        .background(Color(NSColor.windowBackgroundColor))
-                        .cornerRadius(8)
-                        .padding(.bottom, 4)
-                    }
-                    .sheet(isPresented: $showPreferences) {
-                        PreferencesView()
-                    }
-                    .padding(12)
+                if let errorMessage = appState.errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
-                .frame(width: 420, height: 560)
-            }
 
-            // Disclaimer modal
-            if showDisclaimer {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                VStack(spacing: 24) {
-                    Text("Welcome to Sagasu 5")
-                        .font(.largeTitle).bold()
-                        .multilineTextAlignment(.center)
-                    ScrollView {
-                        VStack(alignment: .center, spacing: 16) {
-                            Text("Legal Disclaimer")
-                                .font(.title2).bold()
-                                .multilineTextAlignment(.center)
-                            Text("This application is provided 'as is' without any warranties, expressed or implied. The developers and distributors of Sagasu 5 are not liable for any damages or losses resulting from the use of this software. All data is provided for informational purposes only and may not be accurate or up to date. Use at your own risk.")
-                                .multilineTextAlignment(.center)
-                            Text("Informatic")
-                                .font(.title2).bold()
-                                .multilineTextAlignment(.center)
-                            Text("Sagasu 5 is a menu bar app for macOS that displays room, booking, and task information. Data is fetched from public sources and may be subject to change.")
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.horizontal, 32)
-                    }
-                    Button("Continue") {
-                        showDisclaimer = false
-                    }
-                    .font(.headline)
-                    .padding(.horizontal, 40)
-                    .padding(.vertical, 12)
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                summaryGrid
+
+                if showRoomsCard { roomsSection }
+                if showBookingsCard { bookingsSection }
+                if showTasksCard { tasksSection }
+                if showDetailsCard {
+                    Text("Scraping details")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 8)
+                    detailsSection
                 }
-                .frame(maxWidth: 480)
-                .padding(.vertical, 60)
+
+                Spacer(minLength: 12)
+
+                VStack(spacing: 0) {
+                    Divider()
+
+                    AlfredButton(title: "Preferences", action: { showPreferences = true })
+
+                    Divider()
+
+                    AlfredButton(title: "Quit", action: { NSApplication.shared.terminate(nil) })
+
+                    Divider()
+                        .padding(.bottom, 8)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Last fetch: \(appState.formattedLastRefresh)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Data updates daily at 8:00 AM SGT")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                }
                 .background(Color(NSColor.windowBackgroundColor))
-                .cornerRadius(16)
-                .shadow(radius: 20)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, 4)
             }
+            .sheet(isPresented: $showPreferences) {
+                PreferencesView()
+            }
+            .padding(12)
         }
+        .frame(width: 420, height: 560)
     }
 
     var roomsSection: some View {
@@ -305,6 +258,30 @@ private struct RoomsList: View {
                 }
             }
             .padding(.vertical, 2)
+        }
+    }
+}
+
+private struct AlfredButton: View {
+    let title: String
+    let action: () -> Void
+    @State private var isHovered: Bool = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(isHovered ? Color.accentColor.opacity(0.15) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
