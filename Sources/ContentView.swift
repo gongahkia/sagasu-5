@@ -19,7 +19,7 @@ struct ContentView: View {
     }
 
     private var summaryGrid: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
+        LazyVGrid(columns: columns, spacing: 8) {
             SummaryTile(title: "Free now", value: String(appState.rooms?.statistics.available_rooms ?? 0), tooltip: "Fully available rooms")
             SummaryTile(title: "Partial", value: String(appState.rooms?.statistics.partially_available_rooms ?? 0), tooltip: "Some slots available")
             SummaryTile(title: "Booked", value: String(appState.rooms?.statistics.booked_rooms ?? 0), tooltip: "Completely booked")
@@ -29,7 +29,7 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 header
 
                 if let errorMessage = appState.errorMessage {
@@ -47,12 +47,12 @@ struct ContentView: View {
                     Text("Scraping details")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .padding(.top, 8)
+                        .padding(.top, 4)
                     detailsSection
                 }
 
                 Divider()
-                    .padding(.top, 8)
+                    .padding(.top, 6)
 
                 AlfredButton(
                     title: "Preferences",
@@ -62,28 +62,26 @@ struct ContentView: View {
                 )
 
                 if isPreferencesExpanded {
-                    VStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
                         PreferenceToggleRow(label: "Rooms", isOn: $showRoomsCard)
                         PreferenceToggleRow(label: "Bookings", isOn: $showBookingsCard)
                         PreferenceToggleRow(label: "Tasks", isOn: $showTasksCard)
                         PreferenceToggleRow(label: "Details", isOn: $showDetailsCard)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color(NSColor.controlBackgroundColor))
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.03))
                     .cornerRadius(6)
                     .padding(.horizontal, 12)
-                    .padding(.bottom, 4)
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
 
                 AlfredButton(title: "Quit", action: { NSApplication.shared.terminate(nil) })
 
                 Divider()
-                    .padding(.top, 4)
-                    .padding(.bottom, 8)
+                    .padding(.vertical, 6)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Last fetch: \(appState.formattedLastRefresh)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -158,7 +156,7 @@ struct ContentView: View {
     }
 
     var detailsSection: some View {
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 6) {
             DetailCard(
                 title: "Rooms",
                 updated: appState.formattedScrapedAt(appState.rooms?.metadata.scraped_at),
@@ -183,7 +181,7 @@ struct ContentView: View {
                 extra: nil
             )
         }
-        .padding(.top, 6)
+        .padding(.top, 4)
     }
 }
 
@@ -193,7 +191,7 @@ private struct SummaryTile: View {
     var tooltip: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -202,7 +200,7 @@ private struct SummaryTile: View {
                 .fontWeight(.semibold)
                 .monospacedDigit()
         }
-        .padding(10)
+        .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .help(tooltip)
@@ -217,7 +215,7 @@ private struct DetailCard: View {
     let extra: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption)
                 .fontWeight(.medium)
@@ -240,7 +238,7 @@ private struct DetailCard: View {
             .lineLimit(1)
             .truncationMode(.middle)
         }
-        .padding(8)
+        .padding(6)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
@@ -251,7 +249,7 @@ private struct RoomsList: View {
 
     var body: some View {
         GroupBox {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 ForEach(items.prefix(8)) { item in
                     HStack(alignment: .firstTextBaseline) {
                         Text(item.title)
@@ -268,7 +266,7 @@ private struct RoomsList: View {
                     }
                 }
             }
-            .padding(.vertical, 2)
+            .padding(.vertical, 1)
         }
     }
 }
@@ -278,14 +276,12 @@ private struct PreferenceToggleRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        HStack {
+        Toggle(isOn: $isOn) {
             Text(label)
                 .font(.callout)
-            Spacer()
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
         }
+        .toggleStyle(.checkbox)
+        .padding(.vertical, 1)
     }
 }
 
@@ -311,7 +307,7 @@ private struct AlfredButton: View {
                         .animation(.easeInOut(duration: 0.2), value: isExpanded)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 4)
             .padding(.horizontal, 12)
             .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
             .contentShape(Rectangle())
