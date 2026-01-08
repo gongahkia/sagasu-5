@@ -2,8 +2,30 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-        @State private var showDetails: Bool = false
-        @State private var showPreferences: Bool = false
+    @State private var showDetails: Bool = false
+    @State private var showPreferences: Bool = false
+
+    @AppStorage("showRoomsCard") private var showRoomsCard: Bool = true
+    @AppStorage("showBookingsCard") private var showBookingsCard: Bool = true
+    @AppStorage("showTasksCard") private var showTasksCard: Bool = true
+    @AppStorage("showDetailsCard") private var showDetailsCard: Bool = true
+
+    private var header: some View {
+        Text("Header") // Replace with your actual header view
+    }
+
+    private var columns: [GridItem] {
+        [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+    }
+
+    private var summaryGrid: some View {
+        LazyVGrid(columns: columns, spacing: 10) {
+            SummaryTile(title: "Free now", value: String(appState.rooms?.statistics.available_rooms ?? 0), tooltip: "Fully available rooms")
+            SummaryTile(title: "Partial", value: String(appState.rooms?.statistics.partially_available_rooms ?? 0), tooltip: "Some slots available")
+            SummaryTile(title: "Booked", value: String(appState.rooms?.statistics.booked_rooms ?? 0), tooltip: "Completely booked")
+            SummaryTile(title: "Total", value: String(appState.rooms?.statistics.total_rooms ?? 0), tooltip: "All tracked rooms")
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -18,68 +40,42 @@ struct ContentView: View {
 
                 summaryGrid
 
-                roomsSection
-
-                @AppStorage("showRoomsCard") private var showRoomsCard: Bool = true
-                @AppStorage("showBookingsCard") private var showBookingsCard: Bool = true
-                @AppStorage("showTasksCard") private var showTasksCard: Bool = true
-                @AppStorage("showDetailsCard") private var showDetailsCard: Bool = true
-
-                var body: some View {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
-                            header
-
-                            if let errorMessage = appState.errorMessage {
-                                Label(errorMessage, systemImage: "exclamationmark.triangle")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            summaryGrid
-
-                            if showRoomsCard { roomsSection }
-                            if showBookingsCard { bookingsSection }
-                            if showTasksCard { tasksSection }
-                            if showDetailsCard {
-                                DisclosureGroup("Details", isExpanded: $showDetails) {
-                                    detailsSection
-                                }
-                                .font(.callout)
-                            }
-
-                            footer
-
-                            Divider()
-                            HStack {
-                                Spacer()
-                                Button {
-                                    showPreferences = true
-                                } label: {
-                                    Label("Preferences", systemImage: "gearshape")
-                                }
-                                .buttonStyle(.bordered)
-                                Button {
-                                    NSApplication.shared.terminate(nil)
-                                } label: {
-                                    Label("Quit", systemImage: "power")
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                        }
-                        .sheet(isPresented: $showPreferences) {
-                            PreferencesView()
-                        }
-                        .padding(12)
+                if showRoomsCard { roomsSection }
+                if showBookingsCard { bookingsSection }
+                if showTasksCard { tasksSection }
+                if showDetailsCard {
+                    DisclosureGroup("Details", isExpanded: $showDetails) {
+                        detailsSection
                     }
-                    .frame(width: 420, height: 560)
+                    .font(.callout)
                 }
-        return LazyVGrid(columns: columns, spacing: 10) {
-            SummaryTile(title: "Free now", value: String(appState.rooms?.statistics.available_rooms ?? 0), tooltip: "Fully available rooms")
-            SummaryTile(title: "Partial", value: String(appState.rooms?.statistics.partially_available_rooms ?? 0), tooltip: "Some slots available")
-            SummaryTile(title: "Booked", value: String(appState.rooms?.statistics.booked_rooms ?? 0), tooltip: "Completely booked")
-            SummaryTile(title: "Total", value: String(appState.rooms?.statistics.total_rooms ?? 0), tooltip: "All tracked rooms")
+
+                // Assuming you have a footer property or view
+                // footer
+
+                Divider()
+                HStack {
+                    Spacer()
+                    Button {
+                        showPreferences = true
+                    } label: {
+                        Label("Preferences", systemImage: "gearshape")
+                    }
+                    .buttonStyle(.bordered)
+                    Button {
+                        NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit", systemImage: "power")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .sheet(isPresented: $showPreferences) {
+                PreferencesView()
+            }
+            .padding(12)
         }
+        .frame(width: 420, height: 560)
     }
 
     var roomsSection: some View {
