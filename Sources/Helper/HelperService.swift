@@ -25,11 +25,11 @@ actor SagasuHelperService {
         let startedAt = Date()
         try await store.appendConsole("[\(startedAt.iso8601String)] helper refresh started (\(reason))")
 
-        if let environmentCredentials = HelperCredentialsStore.loadFromEnvironment() {
-            try? HelperCredentialsStore.save(environmentCredentials)
+        if let environmentCredentials = SharedCredentialsStore.loadFromEnvironment() {
+            try? SharedCredentialsStore.save(environmentCredentials)
         }
 
-        let storedCredentials = try? HelperCredentialsStore.load()
+        let storedCredentials = try? SharedCredentialsStore.load()
         let runtime = SagasuAutomationRuntimeDescription()
         let hasCredentials = SagasuAutomationHasCredentialInputs(storedCredentials?.email, storedCredentials?.password)
 
@@ -41,7 +41,7 @@ actor SagasuHelperService {
         snapshot.generated_at = nowString
         snapshot.auth_state = AuthState(
             has_credentials: hasCredentials,
-            storage_mode: HelperCredentialsStore.loadFromEnvironment() != nil ? .environment : (storedCredentials != nil ? .keychain : .none),
+            storage_mode: SharedCredentialsStore.loadFromEnvironment() != nil ? .environment : (storedCredentials != nil ? .keychain : .none),
             runtime: runtime,
             last_error: hasCredentials ? nil : "Credentials are missing; helper is using archived fixtures until the native browser automation is completed."
         )
