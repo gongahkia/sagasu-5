@@ -124,22 +124,26 @@ final class AppState: ObservableObject {
     }
 
     func saveCredentials(email: String, password: String) {
-        do {
-            try SharedCredentialsStore.save(.init(email: email, password: password))
-            errorMessage = nil
-            Task { await reloadCachedSnapshot() }
-        } catch {
-            errorMessage = error.localizedDescription
+        Task {
+            do {
+                try await client.storeCredentials(email: email, password: password)
+                errorMessage = nil
+                await reloadCachedSnapshot()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func clearCredentials() {
-        do {
-            try SharedCredentialsStore.clear()
-            errorMessage = nil
-            Task { await reloadCachedSnapshot() }
-        } catch {
-            errorMessage = error.localizedDescription
+        Task {
+            do {
+                try await client.clearCredentials()
+                errorMessage = nil
+                await reloadCachedSnapshot()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
