@@ -18,6 +18,7 @@ final class AppState: ObservableObject {
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var helperConsole: String = ""
     @Published private(set) var helperMode: HelperRunMode?
+    @Published private(set) var launchAgentStatus: HelperLaunchAgentStatus?
     @Published var scrapePreferences: ScrapePreferences = ScrapePreferences()
     @Published var menuBarTitle: String = "Loading…"
 
@@ -36,6 +37,7 @@ final class AppState: ObservableObject {
         Task {
             await loadScrapePreferences()
         }
+        refreshLaunchAgentStatus()
         startPolling()
     }
 
@@ -105,6 +107,10 @@ final class AppState: ObservableObject {
         helperMode?.title ?? "Stopped"
     }
 
+    var launchAgentDescription: String {
+        launchAgentStatus?.summary ?? "Unavailable"
+    }
+
     func refresh(manual: Bool = true) {
         guard !isLoading else { return }
 
@@ -167,6 +173,43 @@ final class AppState: ObservableObject {
         helperMode = nil
     }
 
+    func installBackgroundService() {
+        do {
+            launchAgentStatus = try lifecycleController.installLaunchAgent()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startBackgroundService() {
+        do {
+            launchAgentStatus = try lifecycleController.startLaunchAgent()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func stopBackgroundService() {
+        do {
+            launchAgentStatus = try lifecycleController.stopLaunchAgent()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func uninstallBackgroundService() {
+        do {
+            try lifecycleController.uninstallLaunchAgent()
+            refreshLaunchAgentStatus()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func saveScrapePreferences() {
         guard let preferencesStore else {
             errorMessage = "Scrape preferences storage is unavailable."
@@ -217,6 +260,14 @@ final class AppState: ObservableObject {
 
         do {
             scrapePreferences = try await preferencesStore.load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func refreshLaunchAgentStatus() {
+        do {
+            launchAgentStatus = try lifecycleController.launchAgentStatus()
         } catch {
             errorMessage = error.localizedDescription
         }
