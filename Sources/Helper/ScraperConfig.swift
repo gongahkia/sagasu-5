@@ -1,4 +1,5 @@
 import Foundation
+import SagasuShared
 
 struct ScrapeConfiguration: Sendable {
     struct Filters: Sendable {
@@ -18,19 +19,25 @@ struct ScrapeConfiguration: Sendable {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         now: Date = Date()
     ) -> ScrapeConfiguration {
-        let date = resolvedDate(environment: environment, now: now)
+        let storedPreferences = (try? ScrapePreferencesStore().load()) ?? ScrapePreferences()
+        let date = resolvedDate(preferences: storedPreferences, environment: environment, now: now)
         return ScrapeConfiguration(
             date: date,
-            startTime: environment["SCRAPE_START_TIME"] ?? "08:00",
-            endTime: environment["SCRAPE_END_TIME"] ?? "22:00",
+            startTime: environment["SCRAPE_START_TIME"] ?? storedPreferences.start_time,
+            endTime: environment["SCRAPE_END_TIME"] ?? storedPreferences.end_time,
             filters: .init(
-                buildings: split(environment["SCRAPE_BUILDING_NAMES"]),
-                floors: split(environment["SCRAPE_FLOOR_NAMES"]),
-                facilityTypes: split(environment["SCRAPE_FACILITY_TYPES"]),
-                equipment: split(environment["SCRAPE_EQUIPMENT"]),
-                capacity: environment["SCRAPE_ROOM_CAPACITY"] ?? ""
+                buildings: overrideOrStored(environment["SCRAPE_BUILDING_NAMES"], stored: storedPreferences.buildings),
+                floors: overrideOrStored(environment["SCRAPE_FLOOR_NAMES"], stored: storedPreferences.floors),
+                facilityTypes: overrideOrStored(environment["SCRAPE_FACILITY_TYPES"], stored: storedPreferences.facility_types),
+                equipment: overrideOrStored(environment["SCRAPE_EQUIPMENT"], stored: storedPreferences.equipment),
+                capacity: environment["SCRAPE_ROOM_CAPACITY"] ?? storedPreferences.capacity
             )
         )
+    }
+
+    private static func overrideOrStored(_ value: String?, stored: [String]) -> [String] {
+        guard let value, !value.isEmpty else { return stored }
+        return split(value)
     }
 
     private static func split(_ value: String?) -> [String] {
@@ -41,9 +48,13 @@ struct ScrapeConfiguration: Sendable {
             .filter { !$0.isEmpty }
     }
 
-    private static func resolvedDate(environment: [String: String], now: Date) -> String {
+    private static func resolvedDate(preferences: ScrapePreferences, environment: [String: String], now: Date) -> String {
         if let rawDate = environment["SCRAPE_DATE"], !rawDate.isEmpty, rawDate != "TODAY" {
             return rawDate
+        }
+
+        if preferences.date != "TODAY", !preferences.date.isEmpty {
+            return preferences.date
         }
 
         let formatter = DateFormatter()
