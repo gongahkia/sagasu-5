@@ -5,6 +5,8 @@ protocol HelperClientProtocol {
     func loadSnapshot() async throws -> ServiceSnapshot
     func refresh(manual: Bool) async throws -> ServiceSnapshot
     func loadConsole() async -> String
+    func storeCredentials(email: String, password: String) async throws
+    func clearCredentials() async throws
 }
 
 struct HelperClientError: LocalizedError {
@@ -78,6 +80,22 @@ final class CompositeHelperClient: HelperClientProtocol {
     func loadConsole() async -> String {
         guard let store else { return "" }
         return await store.loadConsole()
+    }
+
+    func storeCredentials(email: String, password: String) async throws {
+        if (try? await xpcClient.storeCredentials(email: email, password: password)) != nil {
+            return
+        }
+
+        try SharedCredentialsStore.save(.init(email: email, password: password))
+    }
+
+    func clearCredentials() async throws {
+        if (try? await xpcClient.clearCredentials()) != nil {
+            return
+        }
+
+        try SharedCredentialsStore.clear()
     }
 
     private func locateHelperExecutable() -> URL? {
