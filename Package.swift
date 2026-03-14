@@ -20,7 +20,11 @@ let package = Package(
             name: "SagasuAutomationObjC",
             dependencies: [],
             path: "Sources/AutomationObjC",
-            publicHeadersPath: "include"
+            publicHeadersPath: "include",
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("WebKit")
+            ]
         ),
         .executableTarget(
             name: "SagasuApp",
