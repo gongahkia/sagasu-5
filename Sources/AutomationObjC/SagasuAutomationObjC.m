@@ -84,6 +84,33 @@ static NSString * const SagasuAutomationErrorDomain = @"SagasuAutomationErrorDom
     return value;
 }
 
+- (nullable NSData *)snapshotPNGDataWithError:(NSError * _Nullable __autoreleasing *)error {
+    __block NSData *imageData = nil;
+    __block NSError *snapshotError = nil;
+
+    [self sagasu_performOnMainThread:^{
+        dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+        [self.webView takeSnapshotWithConfiguration:nil completionHandler:^(NSImage * _Nullable image, NSError * _Nullable innerError) {
+            if (image) {
+                imageData = [self sagasu_pngDataFromImage:image];
+            }
+            snapshotError = innerError;
+            dispatch_semaphore_signal(semaphore);
+        }];
+
+        [self sagasu_spinUntilSemaphore:semaphore timeout:30.0];
+        if (!imageData && !snapshotError) {
+            snapshotError = [NSError errorWithDomain:SagasuAutomationErrorDomain code:104 userInfo:@{ NSLocalizedDescriptionKey: @"Timed out waiting for WebKit snapshot capture." }];
+        }
+    }];
+
+    if (snapshotError && error) {
+        *error = snapshotError;
+    }
+
+    return imageData;
+}
+
 - (BOOL)waitForJavaScriptCondition:(NSString *)script
                            timeout:(NSTimeInterval)timeout
                       pollInterval:(NSTimeInterval)pollInterval
@@ -215,6 +242,16 @@ static NSString * const SagasuAutomationErrorDomain = @"SagasuAutomationErrorDom
     }
 
     dispatch_sync(dispatch_get_main_queue(), block);
+}
+
+- (nullable NSData *)sagasu_pngDataFromImage:(NSImage *)image {
+    CGImageRef cgImage = [image CGImageForProposedRect:NULL context:nil hints:nil];
+    if (!cgImage) {
+        return nil;
+    }
+
+    NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:cgImage];
+    return [bitmap representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
 }
 
 @end
