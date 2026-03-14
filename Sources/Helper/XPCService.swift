@@ -1,6 +1,14 @@
 import Foundation
 import SagasuShared
 
+private struct DataReplyBox: @unchecked Sendable {
+    let reply: (Data?, NSError?) -> Void
+
+    func call(_ data: Data?, _ error: NSError?) {
+        reply(data, error)
+    }
+}
+
 final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelperXPCProtocol {
     private let service: SagasuHelperService
     private lazy var listener = NSXPCListener(machServiceName: HelperMachService.name)
@@ -18,37 +26,40 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
 
     func currentSnapshot(reply: @escaping (Data?, NSError?) -> Void) {
         let service = self.service
+        let replyBox = DataReplyBox(reply: reply)
         Task {
             do {
                 let snapshot = try await service.currentSnapshot()
-                reply(try JSONEncoder().encode(snapshot), nil)
+                replyBox.call(try JSONEncoder().encode(snapshot), nil)
             } catch {
-                reply(nil, error as NSError)
+                replyBox.call(nil, error as NSError)
             }
         }
     }
 
     func refresh(_ request: Data, reply: @escaping (Data?, NSError?) -> Void) {
         let service = self.service
+        let replyBox = DataReplyBox(reply: reply)
         Task {
             do {
                 let decoded = try JSONDecoder().decode(ScrapeRequest.self, from: request)
                 let snapshot = try await service.refresh(reason: decoded.reason)
-                reply(try JSONEncoder().encode(snapshot), nil)
+                replyBox.call(try JSONEncoder().encode(snapshot), nil)
             } catch {
-                reply(nil, error as NSError)
+                replyBox.call(nil, error as NSError)
             }
         }
     }
 
     func authState(reply: @escaping (Data?, NSError?) -> Void) {
         let service = self.service
+        let replyBox = DataReplyBox(reply: reply)
         Task {
             do {
                 let authState = try await service.currentAuthState()
-                reply(try JSONEncoder().encode(authState), nil)
+                replyBox.call(try JSONEncoder().encode(authState), nil)
             } catch {
-                reply(nil, error as NSError)
+                replyBox.call(nil, error as NSError)
             }
         }
     }
