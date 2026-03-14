@@ -35,6 +35,11 @@ let package = Package(
             name: "SagasuHelper",
             dependencies: ["SagasuShared", "SagasuAutomationObjC"],
             path: "Sources/Helper"
+        ),
+        .testTarget(
+            name: "SagasuTests",
+            dependencies: ["SagasuShared", "SagasuHelper"],
+            path: "Tests/SagasuTests"
         )
     ]
 )
