@@ -64,6 +64,8 @@ final class HelperLaunchAgentManager {
             throw LaunchAgentError(message: "The helper executable could not be located for launch-agent install.")
         }
 
+        try ensureLaunchAgentsDirectoryExists()
+        try ensureLogDirectoryExists()
         let plistURL = try launchAgentURL()
         let logURL = try logURL()
         try writeLaunchAgentPlist(helperURL: helperURL, plistURL: plistURL, logURL: logURL)
@@ -116,21 +118,24 @@ final class HelperLaunchAgentManager {
     }
 
     private func launchAgentURL() throws -> URL {
-        let libraryDirectory = try fileManager.url(
-            for: .libraryDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+        let libraryDirectory = fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library", isDirectory: true)
         let launchAgentsDirectory = libraryDirectory.appendingPathComponent("LaunchAgents", isDirectory: true)
-        try fileManager.createDirectory(at: launchAgentsDirectory, withIntermediateDirectories: true, attributes: nil)
         return launchAgentsDirectory.appendingPathComponent("\(Self.label).plist")
     }
 
     private func logURL() throws -> URL {
         let baseDirectory = try AppSupportPaths.baseDirectory(fileManager: fileManager)
-        try fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true, attributes: nil)
         return baseDirectory.appendingPathComponent("helper.launchd.log")
+    }
+
+    private func ensureLaunchAgentsDirectoryExists() throws {
+        let launchAgentsDirectory = try launchAgentURL().deletingLastPathComponent()
+        try fileManager.createDirectory(at: launchAgentsDirectory, withIntermediateDirectories: true, attributes: nil)
+    }
+
+    private func ensureLogDirectoryExists() throws {
+        let baseDirectory = try logURL().deletingLastPathComponent()
+        try fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true, attributes: nil)
     }
 
     private func writeLaunchAgentPlist(helperURL: URL, plistURL: URL, logURL: URL) throws {
