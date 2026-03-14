@@ -549,9 +549,9 @@ public extension Date {
 }
 
 public extension ISO8601DateFormatter {
-    static let sagasuInternetDateTime: ISO8601DateFormatter = {
+    static var sagasuInternetDateTime: ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
-    }()
+    }
 }

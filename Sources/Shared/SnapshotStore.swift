@@ -33,7 +33,7 @@ public actor SnapshotStore {
     ) throws {
         self.fileManager = fileManager
         self.baseDirectory = try baseDirectory ?? AppSupportPaths.baseDirectory(fileManager: fileManager)
-        try createDirectories()
+        try fileManager.createDirectory(at: self.baseDirectory, withIntermediateDirectories: true, attributes: nil)
     }
 
     public func snapshotURL() -> URL {
@@ -92,9 +92,5 @@ public actor SnapshotStore {
         let bootstrapped = try ArchivedSnapshotBootstrapper().load()
         try saveSnapshot(bootstrapped)
         return bootstrapped
-    }
-
-    private func createDirectories() throws {
-        try fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true, attributes: nil)
     }
 }
