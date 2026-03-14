@@ -18,11 +18,13 @@ final class AppState: ObservableObject {
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var helperConsole: String = ""
     @Published private(set) var helperMode: HelperRunMode?
+    @Published var scrapePreferences: ScrapePreferences = ScrapePreferences()
     @Published var menuBarTitle: String = "Loading…"
 
     private let client: HelperClientProtocol
     private let lifecycleController = HelperLifecycleController()
     private let iso8601 = ISO8601DateFormatter.sagasuInternetDateTime
+    private let preferencesStore = try? ScrapePreferencesStore()
 
     private var pollTask: Task<Void, Never>?
 
@@ -30,6 +32,9 @@ final class AppState: ObservableObject {
         self.client = client
         Task {
             await reloadCachedSnapshot()
+        }
+        Task {
+            await loadScrapePreferences()
         }
         startPolling()
     }
@@ -162,6 +167,22 @@ final class AppState: ObservableObject {
         helperMode = nil
     }
 
+    func saveScrapePreferences() {
+        guard let preferencesStore else {
+            errorMessage = "Scrape preferences storage is unavailable."
+            return
+        }
+
+        Task {
+            do {
+                try await preferencesStore.save(scrapePreferences)
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     private func refreshAsync(manual: Bool) async {
         isLoading = true
         errorMessage = nil
@@ -188,6 +209,16 @@ final class AppState: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             menuBarTitle = "Helper error"
+        }
+    }
+
+    private func loadScrapePreferences() async {
+        guard let preferencesStore else { return }
+
+        do {
+            scrapePreferences = try await preferencesStore.load()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
