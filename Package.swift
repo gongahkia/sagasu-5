@@ -17,6 +17,11 @@ let package = Package(
             path: "Sources/Shared"
         ),
         .target(
+            name: "SagasuCore",
+            dependencies: ["SagasuShared"],
+            path: "Sources/Core"
+        ),
+        .target(
             name: "SagasuAutomationObjC",
             dependencies: [],
             path: "Sources/AutomationObjC",
@@ -33,12 +38,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "SagasuHelper",
-            dependencies: ["SagasuShared", "SagasuAutomationObjC"],
+            dependencies: ["SagasuShared", "SagasuCore", "SagasuAutomationObjC"],
             path: "Sources/Helper"
         ),
         .testTarget(
             name: "SagasuTests",
-            dependencies: ["SagasuShared", "SagasuHelper"],
+            dependencies: ["SagasuShared", "SagasuCore", "SagasuHelper"],
             path: "Tests/SagasuTests"
         )
     ]
