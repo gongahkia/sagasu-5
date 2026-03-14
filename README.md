@@ -8,17 +8,43 @@
     <img src="./asset/logo/logo-five.png" width=55% height=55%>
 </p>
 
-Run it back as a macOS menu bar app and desktop client.
+Run it back *(but as a MacOS menu bar & desktop app)*.
 
 ## Stack
 
-* *Desktop app*: [SwiftUI](https://developer.apple.com/swiftui/)
-* *Helper service*: [Swift](https://developer.apple.com/swift/) + [Objective-C](https://developer.apple.com/documentation/objectivec)
-* *Bootstrap data*: archived `Sagasu 4` scrape logs for local fixture seeding
+* *Frontend*: [SwiftUI](https://developer.apple.com/swiftui/)
+* *Backend*: [Swift](https://developer.apple.com/swift/), [Objective-C](https://developer.apple.com/documentation/objectivec)
 
 ## Rationale
 
 See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github.com/gongahkia/sagasu-2#rationale), [this](https://github.com/gongahkia/sagasu-3#rationale) and [this](https://github.com/gongahkia/sagasu-4#rationale).
+
+## Screenshots
+
+<div align="center">
+    <img src="./asset/reference/1.png" width="32%">
+    <img src="./asset/reference/2.png" width="32%">
+    <img src="./asset/reference/3.png" width="32%">
+</div>
+
+## Usage
+
+The below instructions are for locally building and using `Sagasu 5`.
+
+1. First execute the below to install the repository.
+
+```console
+$ git clone https://github.com/gongahkia/sagasu-5 && cd sagasu-5
+```
+
+2. Next install [XCode](https://apps.apple.com/us/app/xcode/id497799835?mt=12) from the Mac App Store.
+
+3. Finally, run the below to build both the app and helper executables.
+
+```console
+$ ./scripts/build.sh
+$ ./scripts/build_app_bundle.sh # optionally build the app bundle 
+```
 
 ## Architecture
 
@@ -63,67 +89,25 @@ flowchart LR
   STORE --> STATE
 ```
 
-## Screenshots
+## Nerd stuff
 
-<div align="center">
-    <img src="./asset/reference/1.png" width="32%">
-    <img src="./asset/reference/2.png" width="32%">
-    <img src="./asset/reference/3.png" width="32%">
-</div>
+### Where is Sagasu 5 getting the data from?
 
-## Usage
+`Sagasu 5`'s desktop app reads a locally cached `snapshot.json` from the user's Application Support directory.
 
-`Sagasu 5` is still primarily a personal-use project, but it now expects a local helper binary alongside the app instead of a remote GitHub JSON feed.
+### What is Sagasu 5's helper service doing?
 
-If you are interested in cloning and building `Sagasu 5` yourself, the below instructions are for you.
+`Sagasu 5`'s helper currently supports the following.
 
-1. First execute the below to install the repository on your local machine.
+1. Manual refreshes via the app
+2. Scheduled refresh loop support via `sagasu-helper service`
+3. XPC service scaffolding via `sagasu-helper xpc-service`
+4. Keychain-backed credential storage
+5. `Sagasu 4` fixture bootstrapping when no live native browser run has been completed yet *(Archived)*
 
-```console
-$ git clone https://github.com/gongahkia/sagasu-5 && cd sagasu-5
-```
+### Why are there 2 helpers?
 
-2. Next install Xcode from the [Mac App Store](https://apps.apple.com/us/app/xcode/id497799835?mt=12).
-
-3. Build both the app and helper executables.
-
-```console
-$ ./scripts/build.sh
-```
-
-4. Build the app bundle if you want the helper copied into `Sagasu.app`.
-
-```console
-$ ./scripts/build_app_bundle.sh
-```
-
-5. Alternatively open the package directly within Xcode and build it there.
-
-## Runtime Notes
-
-The desktop app reads a locally cached `snapshot.json` from the user's Application Support directory.
-
-The helper currently supports:
-
-* manual refreshes via the app
-* scheduled refresh loop support via `sagasu-helper service`
-* XPC service scaffolding via `sagasu-helper xpc-service`
-* Keychain-backed credential storage
-* archived `Sagasu 4` fixture bootstrapping when no live native browser run has been completed yet
-
-The app prefers XPC when a helper service is available and falls back to launching the bundled helper executable directly when it is not.
-
-The Objective-C layer is currently a native bridge placeholder for the browser-automation/runtime boundary. The Swift helper owns snapshot generation, persistence, status tracking, and the ported parsing logic.
-
-## Data
-
-`Sagasu 5` no longer fetches from `raw.githubusercontent.com` at runtime.
-
-During development, the helper seeds its local cache from the bundled local fixture logs:
-
-* `Fixtures/bootstrap/rooms.json`
-* `Fixtures/bootstrap/bookings.json`
-* `Fixtures/bootstrap/tasks.json`
+`Sagasu 5` will prefer XPC when a helper service is available and falls back to launching the bundled helper executable directly when it is not.
 
 ## Other notes
 
