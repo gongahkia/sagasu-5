@@ -1,5 +1,6 @@
 import Foundation
 import SagasuAutomationObjC
+import SagasuCore
 import SagasuShared
 
 actor SagasuHelperService {

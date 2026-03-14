@@ -1,5 +1,5 @@
 import XCTest
-@testable import SagasuHelper
+@testable import SagasuCore
 
 final class RefreshSchedulerTests: XCTestCase {
     func testNextRefreshDelayTargetsSameDayBeforeCutoff() {
