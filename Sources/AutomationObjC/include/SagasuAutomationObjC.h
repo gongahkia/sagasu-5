@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)loadURLString:(NSString *)urlString timeout:(NSTimeInterval)timeout error:(NSError * _Nullable * _Nullable)error;
 - (nullable NSString *)currentURLString;
 - (nullable id)evaluateJavaScriptSync:(NSString *)script error:(NSError * _Nullable * _Nullable)error;
+- (nullable NSData *)snapshotPNGDataWithError:(NSError * _Nullable * _Nullable)error;
 - (BOOL)waitForJavaScriptCondition:(NSString *)script
                            timeout:(NSTimeInterval)timeout
                       pollInterval:(NSTimeInterval)pollInterval
