@@ -50,6 +50,25 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
         }
     }
 
+    func storeCredentials(_ credentials: Data, reply: @escaping (NSError?) -> Void) {
+        do {
+            let decoded = try JSONDecoder().decode(SharedCredentials.self, from: credentials)
+            try SharedCredentialsStore.save(decoded)
+            reply(nil)
+        } catch {
+            reply(error as NSError)
+        }
+    }
+
+    func clearCredentials(reply: @escaping (NSError?) -> Void) {
+        do {
+            try SharedCredentialsStore.clear()
+            reply(nil)
+        } catch {
+            reply(error as NSError)
+        }
+    }
+
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
         newConnection.exportedInterface = NSXPCInterface(with: SagasuHelperXPCProtocol.self)
         newConnection.exportedObject = self
