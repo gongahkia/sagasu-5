@@ -106,8 +106,11 @@ The helper currently supports:
 
 * manual refreshes via the app
 * scheduled refresh loop support via `sagasu-helper service`
+* XPC service scaffolding via `sagasu-helper xpc-service`
 * Keychain-backed credential storage
 * archived `Sagasu 4` fixture bootstrapping when no live native browser run has been completed yet
+
+The app prefers XPC when a helper service is available and falls back to launching the bundled helper executable directly when it is not.
 
 The Objective-C layer is currently a native bridge placeholder for the browser-automation/runtime boundary. The Swift helper owns snapshot generation, persistence, status tracking, and the ported parsing logic.
 
