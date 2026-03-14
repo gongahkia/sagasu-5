@@ -13,27 +13,25 @@ if [[ -d "$XCODE_DEVELOPER_DIR" ]]; then
 fi
 
 cd "$ROOT_DIR"
-if swift build -c release --product sagasu; then
-  BIN_SRC="$ROOT_DIR/.build/release/sagasu"
-  if [[ ! -f "$BIN_SRC" ]]; then
-    echo "Expected SwiftPM binary not found: $BIN_SRC" >&2
-    exit 1
-  fi
+swift build -c release --product sagasu
+swift build -c release --product sagasu-helper
 
-  cp "$BIN_SRC" "$ROOT_DIR/build/sagasu-menubar"
-  chmod +x "$ROOT_DIR/build/sagasu-menubar"
-  echo "Built: $ROOT_DIR/build/sagasu-menubar"
-  exit 0
+APP_BIN="$ROOT_DIR/.build/release/sagasu"
+HELPER_BIN="$ROOT_DIR/.build/release/sagasu-helper"
+
+if [[ ! -f "$APP_BIN" ]]; then
+  echo "Expected app binary not found: $APP_BIN" >&2
+  exit 1
 fi
 
-echo "swift build failed; falling back to direct swiftc build" >&2
+if [[ ! -f "$HELPER_BIN" ]]; then
+  echo "Expected helper binary not found: $HELPER_BIN" >&2
+  exit 1
+fi
 
-/usr/bin/swiftc \
-  -O \
-  -o "$ROOT_DIR/build/sagasu-menubar" \
-  "$ROOT_DIR"/Sources/*.swift \
-  -framework AppKit \
-  -framework SwiftUI \
-  -framework Combine
+cp "$APP_BIN" "$ROOT_DIR/build/sagasu-menubar"
+cp "$HELPER_BIN" "$ROOT_DIR/build/sagasu-helper"
+chmod +x "$ROOT_DIR/build/sagasu-menubar" "$ROOT_DIR/build/sagasu-helper"
 
 echo "Built: $ROOT_DIR/build/sagasu-menubar"
+echo "Built: $ROOT_DIR/build/sagasu-helper"
