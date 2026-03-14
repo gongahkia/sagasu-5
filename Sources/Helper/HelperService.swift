@@ -6,8 +6,7 @@ actor SagasuHelperService {
     private let store: SnapshotStore
     private let bootstrapper = ArchivedSnapshotBootstrapper()
     private let configProvider: () -> ScrapeConfiguration
-
-    private static let sgtTimeZone = TimeZone(identifier: "Asia/Singapore")!
+    private let refreshScheduler = RefreshScheduler()
 
     init(
         store: SnapshotStore,
@@ -105,29 +104,9 @@ actor SagasuHelperService {
     func runServiceLoop() async throws {
         while true {
             _ = try await refresh(reason: "scheduled-service-loop")
-            let delay = nextRefreshDelay(from: Date())
+            let delay = refreshScheduler.nextRefreshDelay(from: Date())
             try await store.appendConsole("[\(Date().iso8601String)] next scheduled refresh in \(Int(delay))s")
             try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         }
-    }
-
-    private func nextRefreshDelay(from now: Date) -> TimeInterval {
-        var calendar = Calendar.current
-        calendar.timeZone = Self.sgtTimeZone
-
-        var components = calendar.dateComponents([.year, .month, .day], from: now)
-        components.hour = 8
-        components.minute = 15
-        components.second = 0
-
-        guard var next = calendar.date(from: components) else {
-            return 60 * 60
-        }
-
-        if next <= now {
-            next = calendar.date(byAdding: .day, value: 1, to: next) ?? next
-        }
-
-        return max(60, next.timeIntervalSince(now))
     }
 }
