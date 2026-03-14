@@ -32,11 +32,11 @@ final class NativeAutomationDriver {
     }
 
     func waitForURL(_ pattern: String, timeout: TimeInterval = 30) throws {
-        _ = try session.waitForURLMatching(pattern, timeout: timeout)
+        _ = try session.waitForURL(matching: pattern, timeout: timeout)
     }
 
     func waitFor(scriptCondition script: String, timeout: TimeInterval = 30, pollInterval: TimeInterval = 0.25) throws {
-        _ = try session.waitForJavaScriptCondition(script, timeout: timeout, pollInterval: pollInterval)
+        _ = try session.wait(forJavaScriptCondition: script, timeout: timeout, pollInterval: pollInterval)
     }
 
     func evaluate(_ script: String) throws -> Any? {
