@@ -17,6 +17,7 @@ struct DesktopDashboardView: View {
                     datasetCards
                     authPanel
                     helperPanel
+                    backgroundServicePanel
                     configPanel
                     detailPanel
                     roomsPanel
@@ -118,6 +119,48 @@ struct DesktopDashboardView: View {
 
                 Button("Stop helper") {
                     appState.stopHelper()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var backgroundServicePanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Background service")
+                .font(.title3.weight(.semibold))
+
+            Text(appState.launchAgentDescription)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            if let status = appState.launchAgentStatus {
+                Text("Plist: \(status.plistURL.path)")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Text("Log: \(status.logURL.path)")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Button("Install agent") {
+                    appState.installBackgroundService()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Start agent") {
+                    appState.startBackgroundService()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Stop agent") {
+                    appState.stopBackgroundService()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Remove agent") {
+                    appState.uninstallBackgroundService()
                 }
                 .buttonStyle(.bordered)
             }
