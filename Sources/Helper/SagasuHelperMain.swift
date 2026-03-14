@@ -22,7 +22,8 @@ enum SagasuHelperMain {
                 try await service.runServiceLoop()
 
             case "xpc-service":
-                SagasuHelperXPCService(service: service).run()
+                let xpcService = SagasuHelperXPCService(service: service)
+                xpcService.run()
 
             case "bootstrap":
                 let snapshot = try await store.bootstrapSnapshotIfNeeded()

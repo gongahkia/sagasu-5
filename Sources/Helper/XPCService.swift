@@ -17,6 +17,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
     }
 
     func currentSnapshot(reply: @escaping (Data?, NSError?) -> Void) {
+        let service = self.service
         Task {
             do {
                 let snapshot = try await service.currentSnapshot()
@@ -28,6 +29,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
     }
 
     func refresh(_ request: Data, reply: @escaping (Data?, NSError?) -> Void) {
+        let service = self.service
         Task {
             do {
                 let decoded = try JSONDecoder().decode(ScrapeRequest.self, from: request)
@@ -40,6 +42,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
     }
 
     func authState(reply: @escaping (Data?, NSError?) -> Void) {
+        let service = self.service
         Task {
             do {
                 let authState = try await service.currentAuthState()
