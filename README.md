@@ -1,5 +1,6 @@
 [![](https://img.shields.io/badge/sagasu_5.0.0-passing-green)](https://github.com/gongahkia/sagasu-5/releases/tag/5.0.0)
 ![](https://github.com/gongahkia/sagasu-5/actions/workflows/release-dmg.yml/badge.svg)
+![](https://github.com/gongahkia/sagasu-5/actions/workflows/macos-ci.yml/badge.svg)
 
 # `Sagasu 5`
 
@@ -106,13 +107,15 @@ The helper currently supports:
 
 * manual refreshes via the app
 * scheduled refresh loop support via `sagasu-helper service`
+* user launch-agent install/start/stop/remove controls from the app
 * XPC service scaffolding via `sagasu-helper xpc-service`
 * Keychain-backed credential storage
 * archived `Sagasu 4` fixture bootstrapping when no live native browser run has been completed yet
+* retry-backed native WebKit scrapes with HTML and PNG diagnostics under Application Support
 
 The app prefers XPC when a helper service is available and falls back to launching the bundled helper executable directly when it is not.
 
-The Objective-C layer is currently a native bridge placeholder for the browser-automation/runtime boundary. The Swift helper owns snapshot generation, persistence, status tracking, and the ported parsing logic.
+The Objective-C layer now owns the WebKit runtime boundary, synchronous page automation, and PNG snapshot capture. The Swift helper owns snapshot generation, retry logic, diagnostics persistence, status tracking, and the ported parsing logic.
 
 ## Data
 
@@ -123,6 +126,16 @@ During development, the helper seeds its local cache from the bundled local fixt
 * `Fixtures/bootstrap/rooms.json`
 * `Fixtures/bootstrap/bookings.json`
 * `Fixtures/bootstrap/tasks.json`
+
+Failed native scrape attempts also emit diagnostics under the app's Application Support directory in `diagnostics/`, including metadata, page HTML, and a PNG snapshot when WebKit can provide one.
+
+## CI
+
+GitHub Actions now validates the native rewrite on macOS:
+
+* `.github/workflows/macos-ci.yml` builds both executables
+* `.github/workflows/macos-ci.yml` runs `swift test`
+* `.github/workflows/macos-ci.yml` builds the `.app` bundle
 
 ## Other notes
 
