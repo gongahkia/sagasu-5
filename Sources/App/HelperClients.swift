@@ -15,6 +15,7 @@ struct HelperClientError: LocalizedError {
 
 final class CompositeHelperClient: HelperClientProtocol {
     private let store: SnapshotStore?
+    private let xpcClient = XPCHelperClient()
 
     init() {
         self.store = try? SnapshotStore()
@@ -25,12 +26,20 @@ final class CompositeHelperClient: HelperClientProtocol {
             throw HelperClientError(message: "Snapshot store is unavailable.")
         }
 
+        if let snapshot = try? await xpcClient.loadSnapshot() {
+            return snapshot
+        }
+
         return try await store.bootstrapSnapshotIfNeeded()
     }
 
     func refresh(manual: Bool) async throws -> ServiceSnapshot {
         guard let store else {
             throw HelperClientError(message: "Snapshot store is unavailable.")
+        }
+
+        if let snapshot = try? await xpcClient.refresh(manual: manual) {
+            return snapshot
         }
 
         guard let helperURL = locateHelperExecutable() else {
