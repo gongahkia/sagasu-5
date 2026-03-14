@@ -3,6 +3,8 @@ import SagasuShared
 
 struct DesktopDashboardView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var email: String = ""
+    @State private var password: String = ""
 
     var body: some View {
         NavigationStack {
@@ -10,6 +12,8 @@ struct DesktopDashboardView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     hero
                     datasetCards
+                    authPanel
+                    helperPanel
                     roomsPanel
                     bookingsPanel
                     tasksPanel
@@ -88,6 +92,58 @@ struct DesktopDashboardView: View {
                 }
             } else {
                 emptyState("No locally cached room rows are available yet.")
+            }
+        }
+    }
+
+    private var authPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Authentication")
+                .font(.title3.weight(.semibold))
+
+            TextField("SMU email", text: $email)
+                .textFieldStyle(.roundedBorder)
+            SecureField("SMU password", text: $password)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Save to Keychain") {
+                    appState.saveCredentials(email: email, password: password)
+                    password = ""
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Clear credentials") {
+                    appState.clearCredentials()
+                    email = ""
+                    password = ""
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var helperPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Helper control")
+                .font(.title3.weight(.semibold))
+
+            Text("Mode: \(appState.helperModeDescription)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                ForEach(HelperRunMode.allCases) { mode in
+                    Button(appState.helperMode == mode ? "\(mode.title) running" : "Start \(mode.title)") {
+                        appState.startHelper(mode: mode)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Button("Stop helper") {
+                    appState.stopHelper()
+                }
+                .buttonStyle(.bordered)
             }
         }
     }
