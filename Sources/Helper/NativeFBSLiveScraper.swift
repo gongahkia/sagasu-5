@@ -7,21 +7,45 @@ struct PartialScrapeOutputs {
     var tasks: Result<ScrapedTasksResponse, Error>?
 }
 
+struct ScrapeAttemptError: LocalizedError {
+    let dataset: ScrapeDataset?
+    let stage: String
+    let attempt: Int
+    let diagnosticsURL: URL?
+    let underlyingError: Error
+
+    var errorDescription: String? {
+        var parts = ["\(stage) attempt \(attempt) failed: \(underlyingError.localizedDescription)"]
+        if let dataset {
+            parts.insert("\(dataset.rawValue)", at: 0)
+        }
+        if let diagnosticsURL {
+            parts.append("Diagnostics: \(diagnosticsURL.path)")
+        }
+        return parts.joined(separator: " ")
+    }
+}
+
 final class NativeFBSLiveScraper {
     private let driver: NativeAutomationDriver
     private let config: ScrapeConfiguration
+    private let diagnosticsStore: ScrapeDiagnosticsStore?
 
     init(
         driver: NativeAutomationDriver = NativeAutomationDriver(),
-        config: ScrapeConfiguration = .load()
+        config: ScrapeConfiguration = .load(),
+        diagnosticsStore: ScrapeDiagnosticsStore? = try? ScrapeDiagnosticsStore()
     ) {
         self.driver = driver
         self.config = config
+        self.diagnosticsStore = diagnosticsStore
     }
 
     func scrapeAll(credentials: SharedCredentials) -> PartialScrapeOutputs {
         do {
-            try authenticate(credentials: credentials)
+            try retrying(stage: "authenticate", attempts: 2) {
+                try authenticate(credentials: credentials)
+            }
         } catch {
             return PartialScrapeOutputs(
                 rooms: .failure(error),
@@ -31,9 +55,9 @@ final class NativeFBSLiveScraper {
         }
 
         return PartialScrapeOutputs(
-            rooms: Result { try scrapeRooms() },
-            bookings: Result { try scrapeBookings() },
-            tasks: Result { try scrapeTasks() }
+            rooms: captureResult(dataset: .rooms, stage: "rooms") { try scrapeRooms() },
+            bookings: captureResult(dataset: .bookings, stage: "bookings") { try scrapeBookings() },
+            tasks: captureResult(dataset: .tasks, stage: "tasks") { try scrapeTasks() }
         )
     }
 
@@ -224,5 +248,86 @@ final class NativeFBSLiveScraper {
             try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.equipmentOK)
             driver.sleep(milliseconds: 1500)
         }
+    }
+
+    private func captureResult<T>(
+        dataset: ScrapeDataset,
+        stage: String,
+        operation: () throws -> T
+    ) -> Result<T, Error> {
+        Result {
+            try retrying(dataset: dataset, stage: stage, attempts: 2, operation: operation)
+        }
+    }
+
+    private func retrying<T>(
+        dataset: ScrapeDataset? = nil,
+        stage: String,
+        attempts: Int,
+        operation: () throws -> T
+    ) throws -> T {
+        precondition(attempts > 0, "At least one attempt is required.")
+
+        for attempt in 1...attempts {
+            do {
+                return try operation()
+            } catch {
+                let diagnosticsURL = captureDiagnostics(
+                    dataset: dataset,
+                    stage: stage,
+                    error: error,
+                    attempt: attempt,
+                    attempts: attempts
+                )
+
+                if attempt == attempts {
+                    throw ScrapeAttemptError(
+                        dataset: dataset,
+                        stage: stage,
+                        attempt: attempt,
+                        diagnosticsURL: diagnosticsURL,
+                        underlyingError: error
+                    )
+                }
+
+                driver.sleep(milliseconds: retryDelayMilliseconds(for: attempt))
+            }
+        }
+
+        throw NativeAutomationError.actionFailed("Retry loop for \(stage) exited without returning a result.")
+    }
+
+    private func retryDelayMilliseconds(for attempt: Int) -> Int {
+        1500 * max(1, attempt)
+    }
+
+    private func captureDiagnostics(
+        dataset: ScrapeDataset?,
+        stage: String,
+        error: Error,
+        attempt: Int,
+        attempts: Int
+    ) -> URL? {
+        guard let diagnosticsStore else { return nil }
+
+        let currentURL = driver.currentURL()
+        let pageHTML = try? driver.pageHTML()
+        let screenshotPNG = try? driver.snapshotPNGData()
+
+        return try? diagnosticsStore.recordFailure(
+            dataset: dataset,
+            stage: "\(stage)-attempt-\(attempt)",
+            error: error,
+            currentURL: currentURL,
+            pageHTML: pageHTML,
+            screenshotPNG: screenshotPNG,
+            extra: [
+                "attempt": String(attempt),
+                "attempts": String(attempts),
+                "config_date": config.date,
+                "config_start": config.startTime,
+                "config_end": config.endTime
+            ]
+        )
     }
 }
