@@ -41,7 +41,7 @@ public struct ScrapeConfiguration: Sendable {
         now: Date = Date(),
         preferences: ScrapePreferences? = nil
     ) -> ScrapeConfiguration {
-        let storedPreferences = preferences ?? ((try? ScrapePreferencesStore().load()) ?? ScrapePreferences())
+        let storedPreferences = preferences ?? ((try? ScrapePreferencesStore.loadStoredPreferences()) ?? ScrapePreferences())
         let date = resolvedDate(preferences: storedPreferences, environment: environment, now: now)
         return ScrapeConfiguration(
             date: date,

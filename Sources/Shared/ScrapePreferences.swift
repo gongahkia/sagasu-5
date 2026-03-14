@@ -49,13 +49,7 @@ public actor ScrapePreferencesStore {
     }
 
     public func load() throws -> ScrapePreferences {
-        let url = preferencesURL()
-        guard fileManager.fileExists(atPath: url.path) else {
-            return ScrapePreferences()
-        }
-
-        let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(ScrapePreferences.self, from: data)
+        try Self.loadStoredPreferences(fileManager: fileManager, baseDirectory: baseDirectory)
     }
 
     public func save(_ preferences: ScrapePreferences) throws {
@@ -63,5 +57,19 @@ public actor ScrapePreferencesStore {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(preferences)
         try data.write(to: preferencesURL(), options: .atomic)
+    }
+
+    public static func loadStoredPreferences(
+        fileManager: FileManager = .default,
+        baseDirectory: URL? = nil
+    ) throws -> ScrapePreferences {
+        let resolvedBaseDirectory = try baseDirectory ?? AppSupportPaths.baseDirectory(fileManager: fileManager)
+        let url = resolvedBaseDirectory.appendingPathComponent("scrape-preferences.json")
+        guard fileManager.fileExists(atPath: url.path) else {
+            return ScrapePreferences()
+        }
+
+        let data = try Data(contentsOf: url)
+        return try JSONDecoder().decode(ScrapePreferences.self, from: data)
     }
 }
