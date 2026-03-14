@@ -12,6 +12,15 @@ actor SagasuHelperService {
         self.store = store
     }
 
+    func currentSnapshot() async throws -> ServiceSnapshot {
+        try await store.bootstrapSnapshotIfNeeded()
+    }
+
+    func currentAuthState() async throws -> AuthState {
+        let snapshot = try await currentSnapshot()
+        return snapshot.auth_state
+    }
+
     func refresh(reason: String) async throws -> ServiceSnapshot {
         let startedAt = Date()
         try await store.appendConsole("[\(startedAt.iso8601String)] helper refresh started (\(reason))")
