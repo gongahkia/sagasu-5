@@ -55,9 +55,9 @@ actor SagasuHelperService {
             snapshot.bookings = snapshot.bookings ?? fixtureSnapshot.bookings
             snapshot.tasks = snapshot.tasks ?? fixtureSnapshot.tasks
 
-            snapshot.setStatus(staleStatus(for: .rooms, attemptAt: nowString, currentSuccessAt: snapshot.rooms?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
-            snapshot.setStatus(staleStatus(for: .bookings, attemptAt: nowString, currentSuccessAt: snapshot.bookings?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
-            snapshot.setStatus(staleStatus(for: .tasks, attemptAt: nowString, currentSuccessAt: snapshot.tasks?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
+            snapshot.setStatus(SnapshotMergeLogic.staleStatus(for: .rooms, attemptAt: nowString, currentSuccessAt: snapshot.rooms?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
+            snapshot.setStatus(SnapshotMergeLogic.staleStatus(for: .bookings, attemptAt: nowString, currentSuccessAt: snapshot.bookings?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
+            snapshot.setStatus(SnapshotMergeLogic.staleStatus(for: .tasks, attemptAt: nowString, currentSuccessAt: snapshot.tasks?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
 
             try await store.saveSnapshot(snapshot)
             try await store.appendConsole("[\(Date().iso8601String)] helper refresh completed without credentials")
@@ -67,7 +67,7 @@ actor SagasuHelperService {
         let liveScraper = NativeFBSLiveScraper(config: configProvider())
         let outputs = liveScraper.scrapeAll(credentials: credentials)
 
-        let roomsMerge = mergeRooms(
+        let roomsMerge = SnapshotMergeLogic.mergeRooms(
             outputs.rooms,
             current: snapshot.rooms,
             fallback: fixtureSnapshot.rooms,
@@ -77,7 +77,7 @@ actor SagasuHelperService {
         snapshot.setStatus(roomsMerge.status)
         try await store.appendConsole("[\(Date().iso8601String)] rooms status: \(roomsMerge.status.state.rawValue)")
 
-        let bookingsMerge = mergeBookings(
+        let bookingsMerge = SnapshotMergeLogic.mergeBookings(
             outputs.bookings,
             current: snapshot.bookings,
             fallback: fixtureSnapshot.bookings,
@@ -87,7 +87,7 @@ actor SagasuHelperService {
         snapshot.setStatus(bookingsMerge.status)
         try await store.appendConsole("[\(Date().iso8601String)] bookings status: \(bookingsMerge.status.state.rawValue)")
 
-        let tasksMerge = mergeTasks(
+        let tasksMerge = SnapshotMergeLogic.mergeTasks(
             outputs.tasks,
             current: snapshot.tasks,
             fallback: fixtureSnapshot.tasks,
@@ -111,28 +111,6 @@ actor SagasuHelperService {
         }
     }
 
-    private func makeStatus(for dataset: ScrapeDataset, payloadPresent: Bool, attemptAt: String) -> DatasetStatus {
-        DatasetStatus(
-            dataset: dataset,
-            state: payloadPresent ? .success : .failed,
-            last_attempt_at: attemptAt,
-            last_success_at: payloadPresent ? attemptAt : nil,
-            message: payloadPresent
-                ? "Loaded from the local helper cache/bootstrap path."
-                : "No local payload is available for this dataset."
-        )
-    }
-
-    private func staleStatus(for dataset: ScrapeDataset, attemptAt: String, currentSuccessAt: String?, message: String) -> DatasetStatus {
-        DatasetStatus(
-            dataset: dataset,
-            state: currentSuccessAt == nil ? .failed : .stale,
-            last_attempt_at: attemptAt,
-            last_success_at: currentSuccessAt,
-            message: message
-        )
-    }
-
     private func nextRefreshDelay(from now: Date) -> TimeInterval {
         var calendar = Calendar.current
         calendar.timeZone = Self.sgtTimeZone
@@ -151,131 +129,5 @@ actor SagasuHelperService {
         }
 
         return max(60, next.timeIntervalSince(now))
-    }
-
-    private func mergeRooms(
-        _ result: Result<ScrapedRoomsResponse, Error>?,
-        current: ScrapedRoomsResponse?,
-        fallback: ScrapedRoomsResponse?,
-        attemptAt: String
-    ) -> (payload: ScrapedRoomsResponse?, status: DatasetStatus) {
-        switch result {
-        case let .success(payload):
-            return (
-                payload,
-                DatasetStatus(
-                    dataset: .rooms,
-                    state: .success,
-                    last_attempt_at: attemptAt,
-                    last_success_at: payload.metadata.scraped_at,
-                    message: "Live native scrape completed."
-                )
-            )
-        case let .failure(error):
-            let payload = current ?? fallback
-            return (
-                payload,
-                staleStatus(
-                    for: .rooms,
-                    attemptAt: attemptAt,
-                    currentSuccessAt: payload?.metadata.scraped_at,
-                    message: error.localizedDescription
-                )
-            )
-        case .none:
-            return (
-                current ?? fallback,
-                staleStatus(
-                    for: .rooms,
-                    attemptAt: attemptAt,
-                    currentSuccessAt: (current ?? fallback)?.metadata.scraped_at,
-                    message: "The rooms scraper did not produce a result."
-                )
-            )
-        }
-    }
-
-    private func mergeBookings(
-        _ result: Result<ScrapedBookingsResponse, Error>?,
-        current: ScrapedBookingsResponse?,
-        fallback: ScrapedBookingsResponse?,
-        attemptAt: String
-    ) -> (payload: ScrapedBookingsResponse?, status: DatasetStatus) {
-        switch result {
-        case let .success(payload):
-            return (
-                payload,
-                DatasetStatus(
-                    dataset: .bookings,
-                    state: .success,
-                    last_attempt_at: attemptAt,
-                    last_success_at: payload.metadata.scraped_at,
-                    message: "Live native scrape completed."
-                )
-            )
-        case let .failure(error):
-            let payload = current ?? fallback
-            return (
-                payload,
-                staleStatus(
-                    for: .bookings,
-                    attemptAt: attemptAt,
-                    currentSuccessAt: payload?.metadata.scraped_at,
-                    message: error.localizedDescription
-                )
-            )
-        case .none:
-            return (
-                current ?? fallback,
-                staleStatus(
-                    for: .bookings,
-                    attemptAt: attemptAt,
-                    currentSuccessAt: (current ?? fallback)?.metadata.scraped_at,
-                    message: "The bookings scraper did not produce a result."
-                )
-            )
-        }
-    }
-
-    private func mergeTasks(
-        _ result: Result<ScrapedTasksResponse, Error>?,
-        current: ScrapedTasksResponse?,
-        fallback: ScrapedTasksResponse?,
-        attemptAt: String
-    ) -> (payload: ScrapedTasksResponse?, status: DatasetStatus) {
-        switch result {
-        case let .success(payload):
-            return (
-                payload,
-                DatasetStatus(
-                    dataset: .tasks,
-                    state: .success,
-                    last_attempt_at: attemptAt,
-                    last_success_at: payload.metadata.scraped_at,
-                    message: "Live native scrape completed."
-                )
-            )
-        case let .failure(error):
-            let payload = current ?? fallback
-            return (
-                payload,
-                staleStatus(
-                    for: .tasks,
-                    attemptAt: attemptAt,
-                    currentSuccessAt: payload?.metadata.scraped_at,
-                    message: error.localizedDescription
-                )
-            )
-        case .none:
-            return (
-                current ?? fallback,
-                staleStatus(
-                    for: .tasks,
-                    attemptAt: attemptAt,
-                    currentSuccessAt: (current ?? fallback)?.metadata.scraped_at,
-                    message: "The tasks scraper did not produce a result."
-                )
-            )
-        }
     }
 }
