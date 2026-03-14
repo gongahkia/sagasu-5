@@ -1,5 +1,5 @@
 import XCTest
-@testable import SagasuHelper
+@testable import SagasuCore
 @testable import SagasuShared
 
 final class SnapshotMergeLogicTests: XCTestCase {

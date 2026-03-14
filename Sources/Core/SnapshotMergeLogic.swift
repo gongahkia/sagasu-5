@@ -1,8 +1,8 @@
 import Foundation
 import SagasuShared
 
-enum SnapshotMergeLogic {
-    static func staleStatus(
+public enum SnapshotMergeLogic {
+    public static func staleStatus(
         for dataset: ScrapeDataset,
         attemptAt: String,
         currentSuccessAt: String?,
@@ -17,7 +17,7 @@ enum SnapshotMergeLogic {
         )
     }
 
-    static func mergeRooms(
+    public static func mergeRooms(
         _ result: Result<ScrapedRoomsResponse, Error>?,
         current: ScrapedRoomsResponse?,
         fallback: ScrapedRoomsResponse?,
@@ -60,7 +60,7 @@ enum SnapshotMergeLogic {
         }
     }
 
-    static func mergeBookings(
+    public static func mergeBookings(
         _ result: Result<ScrapedBookingsResponse, Error>?,
         current: ScrapedBookingsResponse?,
         fallback: ScrapedBookingsResponse?,
@@ -103,7 +103,7 @@ enum SnapshotMergeLogic {
         }
     }
 
-    static func mergeTasks(
+    public static func mergeTasks(
         _ result: Result<ScrapedTasksResponse, Error>?,
         current: ScrapedTasksResponse?,
         fallback: ScrapedTasksResponse?,
