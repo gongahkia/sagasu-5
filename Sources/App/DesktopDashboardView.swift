@@ -5,6 +5,9 @@ struct DesktopDashboardView: View {
     @EnvironmentObject private var appState: AppState
     @State private var email: String = ""
     @State private var password: String = ""
+    @State private var selectedRoomID: String?
+    @State private var selectedBookingID: String?
+    @State private var selectedTaskID: String?
 
     var body: some View {
         NavigationStack {
@@ -14,6 +17,8 @@ struct DesktopDashboardView: View {
                     datasetCards
                     authPanel
                     helperPanel
+                    configPanel
+                    detailPanel
                     roomsPanel
                     bookingsPanel
                     tasksPanel
@@ -63,35 +68,6 @@ struct DesktopDashboardView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-        }
-    }
-
-    private var roomsPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Rooms")
-                .font(.title3.weight(.semibold))
-
-            if let rooms = appState.rooms?.rooms, !rooms.isEmpty {
-                ForEach(rooms.prefix(12)) { room in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(room.name)
-                                .fontWeight(.medium)
-                            Spacer()
-                            Text(room.availability_summary.is_available_now ? "Free now" : "Next: \(appState.formattedScrapedAt(room.availability_summary.next_available_at))")
-                                .foregroundStyle(.secondary)
-                        }
-                        Text("\(room.building) • \(room.floor) • \(room.facility_type)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-            } else {
-                emptyState("No locally cached room rows are available yet.")
             }
         }
     }
@@ -148,6 +124,130 @@ struct DesktopDashboardView: View {
         }
     }
 
+    private var configPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Scrape preferences")
+                .font(.title3.weight(.semibold))
+
+            HStack {
+                TextField("Date or TODAY", text: Binding(
+                    get: { appState.scrapePreferences.date },
+                    set: { appState.scrapePreferences.date = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+
+                TextField("Start", text: Binding(
+                    get: { appState.scrapePreferences.start_time },
+                    set: { appState.scrapePreferences.start_time = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+
+                TextField("End", text: Binding(
+                    get: { appState.scrapePreferences.end_time },
+                    set: { appState.scrapePreferences.end_time = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+
+                TextField("Capacity", text: Binding(
+                    get: { appState.scrapePreferences.capacity },
+                    set: { appState.scrapePreferences.capacity = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+            }
+
+            TextField("Buildings (comma-separated)", text: csvBinding(for: \.buildings))
+                .textFieldStyle(.roundedBorder)
+            TextField("Floors (comma-separated)", text: csvBinding(for: \.floors))
+                .textFieldStyle(.roundedBorder)
+            TextField("Facility types (comma-separated)", text: csvBinding(for: \.facility_types))
+                .textFieldStyle(.roundedBorder)
+            TextField("Equipment (comma-separated)", text: csvBinding(for: \.equipment))
+                .textFieldStyle(.roundedBorder)
+
+            Button("Save scrape preferences") {
+                appState.saveScrapePreferences()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    @ViewBuilder
+    private var detailPanel: some View {
+        if let room = selectedRoom {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Selected room")
+                    .font(.title3.weight(.semibold))
+                Text(room.name)
+                    .font(.headline)
+                Text("\(room.building) • \(room.floor) • \(room.facility_type)")
+                    .foregroundStyle(.secondary)
+                ForEach(Array(room.timeslots.prefix(12).enumerated()), id: \.offset) { _, slot in
+                    Text("\(slot.start)-\(slot.end) • \(slot.status)")
+                        .font(.system(.caption, design: .monospaced))
+                }
+            }
+        } else if let booking = selectedBooking {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Selected booking")
+                    .font(.title3.weight(.semibold))
+                Text(booking.room_name)
+                    .font(.headline)
+                Text("\(booking.date) • \(booking.start_time)-\(booking.end_time)")
+                    .foregroundStyle(.secondary)
+                Text("Booked by: \(booking.booked_by)")
+                Text("Type: \(booking.booking_type)")
+                Text("Status: \(booking.status)")
+            }
+        } else if let task = selectedTask {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Selected task")
+                    .font(.title3.weight(.semibold))
+                Text(task.task_type)
+                    .font(.headline)
+                Text("\(task.room_name) • \(task.date)")
+                    .foregroundStyle(.secondary)
+                Text("Requested by: \(task.requested_by)")
+                Text("Status: \(task.status)")
+            }
+        }
+    }
+
+    private var roomsPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Rooms")
+                .font(.title3.weight(.semibold))
+
+            if let rooms = appState.rooms?.rooms, !rooms.isEmpty {
+                ForEach(rooms.prefix(12)) { room in
+                    Button {
+                        selectedRoomID = room.id
+                        selectedBookingID = nil
+                        selectedTaskID = nil
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(room.name)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text(room.availability_summary.is_available_now ? "Free now" : "Next: \(appState.formattedScrapedAt(room.availability_summary.next_available_at))")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text("\(room.building) • \(room.floor) • \(room.facility_type)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                emptyState("No locally cached room rows are available yet.")
+            }
+        }
+    }
+
     private var bookingsPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Bookings")
@@ -155,21 +255,28 @@ struct DesktopDashboardView: View {
 
             if !appState.recentBookings.isEmpty {
                 ForEach(appState.recentBookings) { booking in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(booking.room_name)
-                                .fontWeight(.medium)
-                            Text("\(booking.date) • \(booking.start_time)-\(booking.end_time)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    Button {
+                        selectedBookingID = booking.id
+                        selectedRoomID = nil
+                        selectedTaskID = nil
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(booking.room_name)
+                                    .fontWeight(.medium)
+                                Text("\(booking.date) • \(booking.start_time)-\(booking.end_time)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(booking.status)
+                                .font(.caption.weight(.medium))
                         }
-                        Spacer()
-                        Text(booking.status)
-                            .font(.caption.weight(.medium))
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .buttonStyle(.plain)
                 }
             } else {
                 emptyState("No bookings are cached right now.")
@@ -184,21 +291,28 @@ struct DesktopDashboardView: View {
 
             if !appState.recentTasks.isEmpty {
                 ForEach(appState.recentTasks) { task in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(task.task_type)
-                                .fontWeight(.medium)
-                            Text("\(task.room_name) • \(task.date)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    Button {
+                        selectedTaskID = task.id
+                        selectedRoomID = nil
+                        selectedBookingID = nil
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(task.task_type)
+                                    .fontWeight(.medium)
+                                Text("\(task.room_name) • \(task.date)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(task.status)
+                                .font(.caption.weight(.medium))
                         }
-                        Spacer()
-                        Text(task.status)
-                            .font(.caption.weight(.medium))
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .buttonStyle(.plain)
                 }
             } else {
                 emptyState("No task rows are cached right now.")
@@ -228,5 +342,34 @@ struct DesktopDashboardView: View {
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var selectedRoom: ScrapedRoomsResponse.Room? {
+        guard let selectedRoomID else { return nil }
+        return appState.rooms?.rooms?.first(where: { $0.id == selectedRoomID })
+    }
+
+    private var selectedBooking: ScrapedBookingsResponse.Booking? {
+        guard let selectedBookingID else { return nil }
+        return appState.bookings?.bookings.first(where: { $0.id == selectedBookingID })
+    }
+
+    private var selectedTask: ScrapedTasksResponse.Task? {
+        guard let selectedTaskID else { return nil }
+        return appState.tasks?.tasks.first(where: { $0.id == selectedTaskID })
+    }
+
+    private func csvBinding(for keyPath: WritableKeyPath<ScrapePreferences, [String]>) -> Binding<String> {
+        Binding<String>(
+            get: {
+                appState.scrapePreferences[keyPath: keyPath].joined(separator: ", ")
+            },
+            set: { value in
+                appState.scrapePreferences[keyPath: keyPath] = value
+                    .split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
+        )
     }
 }
