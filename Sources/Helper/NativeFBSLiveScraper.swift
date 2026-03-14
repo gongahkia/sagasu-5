@@ -1,0 +1,228 @@
+import Foundation
+import SagasuShared
+
+struct PartialScrapeOutputs {
+    var rooms: Result<ScrapedRoomsResponse, Error>?
+    var bookings: Result<ScrapedBookingsResponse, Error>?
+    var tasks: Result<ScrapedTasksResponse, Error>?
+}
+
+final class NativeFBSLiveScraper {
+    private let driver: NativeAutomationDriver
+    private let config: ScrapeConfiguration
+
+    init(
+        driver: NativeAutomationDriver = NativeAutomationDriver(),
+        config: ScrapeConfiguration = .load()
+    ) {
+        self.driver = driver
+        self.config = config
+    }
+
+    func scrapeAll(credentials: SharedCredentials) -> PartialScrapeOutputs {
+        do {
+            try authenticate(credentials: credentials)
+        } catch {
+            return PartialScrapeOutputs(
+                rooms: .failure(error),
+                bookings: .failure(error),
+                tasks: .failure(error)
+            )
+        }
+
+        return PartialScrapeOutputs(
+            rooms: Result { try scrapeRooms() },
+            bookings: Result { try scrapeBookings() },
+            tasks: Result { try scrapeTasks() }
+        )
+    }
+
+    private func authenticate(credentials: SharedCredentials) throws {
+        try driver.load(NativeScraperDefinitions.landingURL)
+
+        if let href = try driver.attribute(selector: NativeScraperDefinitions.Selectors.fbsLink, name: "href"), !href.isEmpty {
+            try driver.load(href)
+        } else {
+            try driver.click(selector: NativeScraperDefinitions.Selectors.fbsLink)
+        }
+
+        try driver.waitForURL(NativeScraperDefinitions.microsoftLoginPattern)
+        try driver.waitFor(scriptCondition: NativeScraperDefinitions.JavaScript.querySelectorExists(NativeScraperDefinitions.Selectors.emailInput))
+        try driver.fill(selector: "#i0116", value: credentials.email)
+        try driver.click(selector: "#idSIButton9")
+
+        do {
+            try driver.waitForURL(NativeScraperDefinitions.smuLoginPattern, timeout: 10)
+        } catch {
+            if let href = try driver.attribute(selector: NativeScraperDefinitions.Selectors.redirectLink, name: "href"), !href.isEmpty {
+                try driver.load(href)
+            } else {
+                try driver.click(selector: NativeScraperDefinitions.Selectors.redirectLink)
+            }
+            try driver.waitForURL(NativeScraperDefinitions.smuLoginPattern)
+        }
+
+        try driver.waitFor(scriptCondition: NativeScraperDefinitions.JavaScript.querySelectorExists(NativeScraperDefinitions.Selectors.passwordInput))
+        try driver.fill(selector: NativeScraperDefinitions.Selectors.passwordInput, value: credentials.password)
+        try driver.click(selector: NativeScraperDefinitions.Selectors.passwordSubmit)
+        try driver.waitForURL(NativeScraperDefinitions.dashboardPattern)
+    }
+
+    private func scrapeRooms() throws -> ScrapedRoomsResponse {
+        let startedAt = Date()
+        try driver.load(NativeScraperDefinitions.homeURL)
+        try driver.waitForNestedFrameSelector(NativeScraperDefinitions.Selectors.dateInput)
+
+        try driver.fillInNestedFrame(selector: NativeScraperDefinitions.Selectors.dateInput, value: config.date)
+        try driver.selectInNestedFrame(selector: NativeScraperDefinitions.Selectors.timeFrom, value: config.startTime)
+        try driver.selectInNestedFrame(selector: NativeScraperDefinitions.Selectors.timeTo, value: config.endTime)
+        driver.sleep(milliseconds: 1500)
+
+        try applyFilters()
+
+        try driver.waitForNestedFrameSelector(NativeScraperDefinitions.Selectors.roomGrid)
+        let matchingRooms = try driver.roomNamesInNestedFrame(selector: NativeScraperDefinitions.Selectors.roomRows)
+        try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.checkAvailability)
+        driver.sleep(milliseconds: 10000)
+
+        let rawBookings = try driver.titleAttributesInNestedFrame(selector: NativeScraperDefinitions.Selectors.schedulerEvents)
+        let mapped = LegacyScraperLogic.mapTimeslotsToRooms(rawRooms: matchingRooms, rawTimeslots: rawBookings)
+        let rooms = matchingRooms.map { roomName -> ScrapedRoomsResponse.Room in
+            let timeslots = mapped[roomName] ?? []
+            let metadata = LegacyScraperLogic.extractRoomMetadata(roomName: roomName, filters: config.filters)
+            let summary = LegacyScraperLogic.calculateAvailabilitySummary(timeslots: timeslots)
+            return .init(
+                id: roomName,
+                name: roomName,
+                building: metadata.building,
+                building_code: metadata.buildingCode,
+                floor: metadata.floor,
+                facility_type: metadata.facilityType,
+                equipment: metadata.equipment,
+                timeslots: timeslots,
+                availability_summary: summary
+            )
+        }
+
+        return .init(
+            metadata: .init(
+                version: "5.0.0",
+                scraped_at: Date().iso8601String,
+                scrape_duration_ms: Int(Date().timeIntervalSince(startedAt) * 1000),
+                success: true,
+                error: nil,
+                scraper_version: "rooms-native-v1",
+                source: SagasuAutomationRuntimeDescription() as String
+            ),
+            config: .init(
+                date: config.date,
+                start_time: config.startTime,
+                end_time: config.endTime,
+                filters: .init(
+                    buildings: config.filters.buildings,
+                    floors: config.filters.floors,
+                    facility_types: config.filters.facilityTypes,
+                    equipment: config.filters.equipment,
+                    capacity: config.filters.capacity
+                )
+            ),
+            statistics: LegacyScraperLogic.roomStatistics(from: rooms),
+            rooms: rooms
+        )
+    }
+
+    private func scrapeBookings() throws -> ScrapedBookingsResponse {
+        let startedAt = Date()
+        try driver.load(NativeScraperDefinitions.homeURL)
+        try driver.waitForNestedFrameSelector(NativeScraperDefinitions.Selectors.myBookingsTab)
+        try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.myBookingsTab)
+        driver.sleep(milliseconds: 15000)
+        try driver.waitForNestedFrameSelector(NativeScraperDefinitions.Selectors.bookingsGrid)
+
+        let rows = try driver.rowsMatrixInNestedFrame(selector: NativeScraperDefinitions.Selectors.bookingRows)
+        let bookings = rows.compactMap(LegacyScraperLogic.parseBookingRow)
+
+        return .init(
+            metadata: .init(
+                version: "5.0.0",
+                scraped_at: Date().iso8601String,
+                scrape_duration_ms: Int(Date().timeIntervalSince(startedAt) * 1000),
+                success: true,
+                error: nil,
+                scraper_version: "bookings-native-v1",
+                source: SagasuAutomationRuntimeDescription() as String
+            ),
+            statistics: LegacyScraperLogic.bookingStatistics(from: bookings),
+            bookings: bookings
+        )
+    }
+
+    private func scrapeTasks() throws -> ScrapedTasksResponse {
+        let startedAt = Date()
+        try driver.load(NativeScraperDefinitions.homeURL)
+        try driver.waitForNestedFrameSelector(NativeScraperDefinitions.Selectors.taskListTab)
+        try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.taskListTab)
+        driver.sleep(milliseconds: 15000)
+        try driver.waitForNestedFrameSelector(NativeScraperDefinitions.Selectors.tasksGrid)
+
+        let rows = try driver.rowsMatrixInNestedFrame(selector: NativeScraperDefinitions.Selectors.taskRows)
+        let tasks = rows.compactMap(LegacyScraperLogic.parseTaskRow)
+
+        return .init(
+            metadata: .init(
+                version: "5.0.0",
+                scraped_at: Date().iso8601String,
+                scrape_duration_ms: Int(Date().timeIntervalSince(startedAt) * 1000),
+                success: true,
+                error: nil,
+                scraper_version: "tasks-native-v1",
+                source: SagasuAutomationRuntimeDescription() as String
+            ),
+            statistics: LegacyScraperLogic.taskStatistics(from: tasks),
+            tasks: tasks
+        )
+    }
+
+    private func applyFilters() throws {
+        if !config.filters.buildings.isEmpty {
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.buildingPicker)
+            for building in config.filters.buildings {
+                try driver.clickTextInNestedFrame(building)
+            }
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.buildingOK)
+            driver.sleep(milliseconds: 1500)
+        }
+
+        if !config.filters.floors.isEmpty {
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.floorPicker)
+            for floor in config.filters.floors {
+                try driver.clickTextInNestedFrame(floor)
+            }
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.floorOK)
+            driver.sleep(milliseconds: 1500)
+        }
+
+        if !config.filters.facilityTypes.isEmpty {
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.facilityPicker)
+            for facilityType in config.filters.facilityTypes {
+                try driver.clickTextInNestedFrame(facilityType)
+            }
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.facilityOK)
+            driver.sleep(milliseconds: 1500)
+        }
+
+        if !config.filters.capacity.isEmpty {
+            try driver.selectInNestedFrame(selector: NativeScraperDefinitions.Selectors.capacity, value: config.filters.capacity)
+            driver.sleep(milliseconds: 1500)
+        }
+
+        if !config.filters.equipment.isEmpty {
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.equipmentPicker)
+            for equipment in config.filters.equipment {
+                try driver.clickTextInNestedFrame(equipment)
+            }
+            try driver.clickInNestedFrame(selector: NativeScraperDefinitions.Selectors.equipmentOK)
+            driver.sleep(milliseconds: 1500)
+        }
+    }
+}
