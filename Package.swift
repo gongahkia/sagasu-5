@@ -43,7 +43,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SagasuTests",
-            dependencies: ["SagasuShared", "SagasuCore", "SagasuHelper"],
+            dependencies: ["SagasuShared", "SagasuCore"],
             path: "Tests/SagasuTests"
         )
     ]
