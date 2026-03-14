@@ -1,7 +1,7 @@
 import Foundation
 import SagasuShared
 
-final class XPCHelperClient {
+final class XPCHelperClient: @unchecked Sendable {
     func loadSnapshot() async throws -> ServiceSnapshot {
         let data = try await call { proxy, reply in
             proxy.currentSnapshot(reply: reply)

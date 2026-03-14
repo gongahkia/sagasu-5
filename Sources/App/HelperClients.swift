@@ -1,7 +1,7 @@
 import Foundation
 import SagasuShared
 
-protocol HelperClientProtocol {
+protocol HelperClientProtocol: Sendable {
     func loadSnapshot() async throws -> ServiceSnapshot
     func refresh(manual: Bool) async throws -> ServiceSnapshot
     func loadConsole() async -> String
@@ -15,7 +15,7 @@ struct HelperClientError: LocalizedError {
     var errorDescription: String? { message }
 }
 
-final class CompositeHelperClient: HelperClientProtocol {
+final class CompositeHelperClient: HelperClientProtocol, @unchecked Sendable {
     private let store: SnapshotStore?
     private let xpcClient = XPCHelperClient()
 
