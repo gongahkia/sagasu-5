@@ -44,10 +44,74 @@ final class PersistenceStoreTests: XCTestCase {
         XCTAssertEqual(loaded, preferences)
     }
 
+    func testScrapePreferencesStoreReturnsDefaultsWhenFileIsMissing() async throws {
+        let baseDirectory = temporaryDirectory()
+        let store = try ScrapePreferencesStore(baseDirectory: baseDirectory)
+
+        let loaded = try await store.load()
+
+        XCTAssertEqual(loaded, ScrapePreferences())
+    }
+
+    func testSnapshotStoreBootstrapsFixturesWhenCacheIsMissing() async throws {
+        let baseDirectory = temporaryDirectory()
+        let store = try SnapshotStore(baseDirectory: baseDirectory)
+
+        let bootstrapped = try await store.bootstrapSnapshotIfNeeded()
+
+        XCTAssertNotNil(bootstrapped.rooms)
+        XCTAssertNotNil(bootstrapped.bookings)
+        XCTAssertNotNil(bootstrapped.tasks)
+        XCTAssertEqual(bootstrapped.rooms?.metadata.source, "Fixtures/bootstrap/rooms.json")
+    }
+
+    func testSnapshotStoreBootstrapDoesNotOverwriteExistingSnapshot() async throws {
+        let baseDirectory = temporaryDirectory()
+        let store = try SnapshotStore(baseDirectory: baseDirectory)
+
+        var snapshot = ServiceSnapshot()
+        snapshot.generated_at = "2026-03-14T08:15:00Z"
+        snapshot.rooms = makeRoomsResponse(source: "existing-cache")
+        try await store.saveSnapshot(snapshot)
+
+        let bootstrapped = try await store.bootstrapSnapshotIfNeeded()
+
+        XCTAssertEqual(bootstrapped.rooms?.metadata.source, "existing-cache")
+    }
+
     private func temporaryDirectory() -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
         return directory
+    }
+
+    private func makeRoomsResponse(source: String) -> ScrapedRoomsResponse {
+        ScrapedRoomsResponse(
+            metadata: .init(
+                version: "5.0.0",
+                scraped_at: "2026-03-14T08:00:00Z",
+                scrape_duration_ms: 1000,
+                success: true,
+                error: nil,
+                scraper_version: "test",
+                source: source
+            ),
+            config: .init(date: "14-Mar-2026", start_time: "08:00", end_time: "22:00"),
+            statistics: .init(total_rooms: 1, available_rooms: 1, booked_rooms: 0, partially_available_rooms: 0),
+            rooms: [
+                .init(
+                    id: "room-1",
+                    name: "Room 1",
+                    building: "Building",
+                    building_code: "B",
+                    floor: "1",
+                    facility_type: "Meeting Pod",
+                    equipment: [],
+                    timeslots: [],
+                    availability_summary: .init(is_available_now: true, next_available_at: nil, free_slots_count: 1, free_duration_minutes: 60)
+                )
+            ]
+        )
     }
 }
