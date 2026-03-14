@@ -7,13 +7,13 @@
     <img src="./asset/logo/logo-five.png" width=55% height=55%>
 </p>
 
-Run [it](#other-notes) back *(but as a [MacOS](https://www.apple.com/os/macos/) menu bar app)*.
+Run it back as a macOS menu bar app and desktop client.
 
 ## Stack
 
-* *Frontend*: [SwiftUI](https://developer.apple.com/swiftui/)
-* *Backend*: [Swift](https://developer.apple.com/swift/)
-* *API*: [`Sagasu 4`'s data](#data)
+* *Desktop app*: [SwiftUI](https://developer.apple.com/swiftui/)
+* *Helper service*: [Swift](https://developer.apple.com/swift/) + [Objective-C](https://developer.apple.com/documentation/objectivec)
+* *Bootstrap data*: archived `Sagasu 4` scrape logs for local fixture seeding
 
 ## Rationale
 
@@ -23,64 +23,43 @@ See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github
 
 ```mermaid
 flowchart LR
-  %% Sagasu 5 - Architecture-as-code (Mermaid)
-
-  %% ===== Styles =====
   classDef app fill:#E8F2FF,stroke:#5B8DEF,stroke-width:1px,color:#0B1F44;
-  classDef service fill:#EFFFF5,stroke:#3AA76D,stroke-width:1px,color:#062A17;
+  classDef helper fill:#EFFFF5,stroke:#3AA76D,stroke-width:1px,color:#062A17;
   classDef data fill:#FFF6E5,stroke:#D49B3A,stroke-width:1px,color:#3B2103;
-  classDef external fill:#F4F5F7,stroke:#8A8F98,stroke-width:1px,color:#1F2328;
-  classDef user fill:#F2E9FF,stroke:#7B61FF,stroke-width:1px,color:#20124D;
+  classDef archive fill:#F4F5F7,stroke:#8A8F98,stroke-width:1px,color:#1F2328;
 
-  %% ===== User / Device =====
   subgraph mac[macOS Device]
-    U[User]
-    class U user
+    subgraph app[Sagasu App]
+      MB[MenuBarExtra]
+      DASH[Desktop dashboard]
+      STATE[AppState]
+      CLIENT[Local helper client]
+      class MB,DASH,STATE,CLIENT app
+    end
 
-    subgraph s5[Sagasu 5 - Menu Bar App]
-      MB[MenuBarExtra - SwiftUI]
-      UI[ContentView - Menu UI]
-      AS[AppState\n- schedules refresh\n- holds published state\n- computes menu title]
-      class MB,UI,AS app
+    subgraph helper[Sagasu Helper]
+      LOOP[Scheduled/manual refresh loop]
+      STORE[Snapshot store\nApplication Support]
+      AUTH[Keychain auth state]
+      BRIDGE[Objective-C bridge]
+      class LOOP,STORE,AUTH,BRIDGE helper
     end
   end
 
-  U -->|clicks menu bar icon| MB
-  MB --> UI
-  UI <-->|observes| AS
-
-  %% ===== Networking / Fetch =====
-  subgraph net[Fetch + Decode]
-    SCHED[Daily refresh @ 08:15 SGT\nmanual refresh]
-    HTTP[URLSession GET\n3 endpoints in parallel]
-    DEC[JSONDecoder\ndecode into Models.swift]
-    class SCHED,HTTP,DEC service
+  subgraph archive[Archived bootstrap]
+    S4[`archived-scraping/sagasu-4/backend/log/*.json`]
+    class S4 archive
   end
 
-  AS --> SCHED
-  SCHED --> HTTP
-  HTTP --> DEC
-  DEC --> AS
-
-  %% ===== Data Source (external) =====
-  subgraph ext[External data producer: Sagasu 4]
-    CRON[GitHub Actions - cron]
-    SCRAPE[Scraper job\ncollects rooms/bookings/tasks]
-    REPO[(GitHub repo: sagasu-4\nbackend/log/*.json)]
-    class CRON,SCRAPE external
-    class REPO data
-
-    CRON --> SCRAPE
-    SCRAPE -->|commits JSON logs| REPO
-  end
-
-  %% ===== Consumption =====
-  REPO -->|raw.githubusercontent.com\nGET scraped_log.json| HTTP
-  REPO -->|raw.githubusercontent.com\nGET scraped_bookings.json| HTTP
-  REPO -->|raw.githubusercontent.com\nGET scraped_tasks.json| HTTP
-
-  %% ===== Notes =====
-  AS -.->|updates menu title\ne.g. x/y free| MB
+  MB --> STATE
+  DASH --> STATE
+  STATE --> CLIENT
+  CLIENT --> LOOP
+  LOOP --> AUTH
+  LOOP --> BRIDGE
+  LOOP --> STORE
+  S4 --> LOOP
+  STORE --> STATE
 ```
 
 ## Screenshots
@@ -93,7 +72,7 @@ flowchart LR
 
 ## Usage
 
-Note that `Sagasu 5` *(like `Sagasu 4`)* was primarily made for my own use. The most immediate and easiest way for others to access `Sagasu 5` is via [direct download](https://support.apple.com/en-us/102662) of the `Sagasu.dmg` [here]().
+`Sagasu 5` is still primarily a personal-use project, but it now expects a local helper binary alongside the app instead of a remote GitHub JSON feed.
 
 If you are interested in cloning and building `Sagasu 5` yourself, the below instructions are for you.
 
@@ -105,21 +84,42 @@ $ git clone https://github.com/gongahkia/sagasu-5 && cd sagasu-5
 
 2. Next install Xcode from the [Mac App Store](https://apps.apple.com/us/app/xcode/id497799835?mt=12).
 
-3. Finally run the below command to build the project with [Xcode](https://developer.apple.com/xcode/) via the [Xcode CLI toolkit](https://mac.install.guide/commandlinetools/).
+3. Build both the app and helper executables.
 
 ```console
-$ swift build
+$ ./scripts/build.sh
 ```
 
-4. Alternatively open the project directly within Xcode and build it via the [GUI view](https://developer.apple.com/documentation/xcode/building-and-running-an-app).
+4. Build the app bundle if you want the helper copied into `Sagasu.app`.
+
+```console
+$ ./scripts/build_app_bundle.sh
+```
+
+5. Alternatively open the package directly within Xcode and build it there.
+
+## Runtime Notes
+
+The desktop app reads a locally cached `snapshot.json` from the user's Application Support directory.
+
+The helper currently supports:
+
+* manual refreshes via the app
+* scheduled refresh loop support via `sagasu-helper service`
+* Keychain-backed credential storage
+* archived `Sagasu 4` fixture bootstrapping when no live native browser run has been completed yet
+
+The Objective-C layer is currently a native bridge placeholder for the browser-automation/runtime boundary. The Swift helper owns snapshot generation, persistence, status tracking, and the ported parsing logic.
 
 ## Data
 
-For those interested, `Sagasu 5` is currenly configured to pull daily data from `Sagasu 4`'s below [publicly available endpoints](https://github.com/gongahkia/sagasu-4).
+`Sagasu 5` no longer fetches from `raw.githubusercontent.com` at runtime.
 
-* `backend/log/scraped_log.json`
-* `backend/log/scraped_bookings.json`
-* `backend/log/scraped_tasks.json`
+During development, the helper seeds its local cache from the archived `Sagasu 4` fixture logs:
+
+* `archived-scraping/sagasu-4/backend/log/scraped_log.json`
+* `archived-scraping/sagasu-4/backend/log/scraped_bookings.json`
+* `archived-scraping/sagasu-4/backend/log/scraped_tasks.json`
 
 ## Other notes
 
