@@ -47,7 +47,7 @@ flowchart LR
   end
 
   subgraph archive[Archived bootstrap]
-    S4[`archived-scraping/sagasu-4/backend/log/*.json`]
+    S4[`Fixtures/bootstrap/*.json`]
     class S4 archive
   end
 
@@ -118,11 +118,11 @@ The Objective-C layer is currently a native bridge placeholder for the browser-a
 
 `Sagasu 5` no longer fetches from `raw.githubusercontent.com` at runtime.
 
-During development, the helper seeds its local cache from the archived `Sagasu 4` fixture logs:
+During development, the helper seeds its local cache from the bundled local fixture logs:
 
-* `archived-scraping/sagasu-4/backend/log/scraped_log.json`
-* `archived-scraping/sagasu-4/backend/log/scraped_bookings.json`
-* `archived-scraping/sagasu-4/backend/log/scraped_tasks.json`
+* `Fixtures/bootstrap/rooms.json`
+* `Fixtures/bootstrap/bookings.json`
+* `Fixtures/bootstrap/tasks.json`
 
 ## Other notes
 
