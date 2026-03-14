@@ -17,9 +17,10 @@ struct ScrapeConfiguration: Sendable {
 
     static func load(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        now: Date = Date()
+        now: Date = Date(),
+        preferences: ScrapePreferences? = nil
     ) -> ScrapeConfiguration {
-        let storedPreferences = (try? ScrapePreferencesStore().load()) ?? ScrapePreferences()
+        let storedPreferences = preferences ?? ((try? ScrapePreferencesStore().load()) ?? ScrapePreferences())
         let date = resolvedDate(preferences: storedPreferences, environment: environment, now: now)
         return ScrapeConfiguration(
             date: date,
