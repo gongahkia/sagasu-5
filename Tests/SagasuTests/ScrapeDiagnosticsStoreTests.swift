@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import SagasuHelper
+@testable import SagasuCore
 @testable import SagasuShared
 
 final class ScrapeDiagnosticsStoreTests: XCTestCase {

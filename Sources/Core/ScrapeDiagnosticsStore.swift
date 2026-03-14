@@ -1,21 +1,37 @@
 import Foundation
 import SagasuShared
 
-struct ScrapeDiagnosticMetadata: Codable {
-    let dataset: String
-    let stage: String
-    let recorded_at: String
-    let current_url: String?
-    let error: String
-    let extra: [String: String]
+public struct ScrapeDiagnosticMetadata: Codable {
+    public let dataset: String
+    public let stage: String
+    public let recorded_at: String
+    public let current_url: String?
+    public let error: String
+    public let extra: [String: String]
+
+    public init(
+        dataset: String,
+        stage: String,
+        recorded_at: String,
+        current_url: String?,
+        error: String,
+        extra: [String: String]
+    ) {
+        self.dataset = dataset
+        self.stage = stage
+        self.recorded_at = recorded_at
+        self.current_url = current_url
+        self.error = error
+        self.extra = extra
+    }
 }
 
-final class ScrapeDiagnosticsStore {
+public final class ScrapeDiagnosticsStore {
     private let fileManager: FileManager
     private let rootDirectory: URL
     private let maxRetainedDirectories: Int
 
-    init(
+    public init(
         fileManager: FileManager = .default,
         rootDirectory: URL? = nil,
         maxRetainedDirectories: Int = 25
@@ -27,12 +43,12 @@ final class ScrapeDiagnosticsStore {
         try fileManager.createDirectory(at: self.rootDirectory, withIntermediateDirectories: true, attributes: nil)
     }
 
-    func diagnosticsRootURL() -> URL {
+    public func diagnosticsRootURL() -> URL {
         rootDirectory
     }
 
     @discardableResult
-    func recordFailure(
+    public func recordFailure(
         dataset: ScrapeDataset?,
         stage: String,
         error: Error,
