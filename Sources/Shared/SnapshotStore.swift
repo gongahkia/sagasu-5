@@ -19,11 +19,7 @@ public struct AppSupportPaths {
             return appSupport.appendingPathComponent(bundleIdentifier, isDirectory: true)
         }
 
-        if let home = fileManager.homeDirectoryForCurrentUser as URL? {
-            return home.appendingPathComponent(".sagasu", isDirectory: true)
-        }
-
-        throw SnapshotStoreError.unavailableBaseDirectory
+        return fileManager.homeDirectoryForCurrentUser.appendingPathComponent(".sagasu", isDirectory: true)
     }
 }
 
@@ -99,6 +95,6 @@ public actor SnapshotStore {
     }
 
     private func createDirectories() throws {
-        try fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true, attributes: nil)
     }
 }
