@@ -8,4 +8,6 @@ public enum HelperMachService {
     func currentSnapshot(reply: @escaping (Data?, NSError?) -> Void)
     func refresh(_ request: Data, reply: @escaping (Data?, NSError?) -> Void)
     func authState(reply: @escaping (Data?, NSError?) -> Void)
+    func storeCredentials(_ credentials: Data, reply: @escaping (NSError?) -> Void)
+    func clearCredentials(reply: @escaping (NSError?) -> Void)
 }
