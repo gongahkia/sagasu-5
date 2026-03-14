@@ -83,7 +83,7 @@ final class HelperLifecycleController {
         try launchAgentManager.uninstall()
     }
 
-    static func locateHelperExecutable() -> URL? {
+    nonisolated static func locateHelperExecutable() -> URL? {
         let fileManager = FileManager.default
         let current = URL(fileURLWithPath: fileManager.currentDirectoryPath)
 

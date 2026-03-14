@@ -81,7 +81,7 @@ final class XPCHelperClient {
             connection.invalidate()
         }
 
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             let proxy = connection.remoteObjectProxyWithErrorHandler { error in
                 continuation.resume(throwing: error)
             } as? SagasuHelperXPCProtocol
