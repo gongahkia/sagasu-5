@@ -21,12 +21,15 @@ enum SagasuHelperMain {
             case "service":
                 try await service.runServiceLoop()
 
+            case "xpc-service":
+                SagasuHelperXPCService(service: service).run()
+
             case "bootstrap":
                 let snapshot = try await store.bootstrapSnapshotIfNeeded()
                 print("helper bootstrapped local snapshot at \(snapshot.generated_at)")
 
             default:
-                fputs("usage: sagasu-helper [refresh|service|bootstrap]\n", stderr)
+                fputs("usage: sagasu-helper [refresh|service|xpc-service|bootstrap]\n", stderr)
                 exit(1)
             }
         } catch {
