@@ -26,6 +26,7 @@ struct HelperLaunchError: LocalizedError {
 final class HelperLifecycleController {
     private(set) var activeMode: HelperRunMode?
     private var process: Process?
+    private let launchAgentManager = HelperLaunchAgentManager()
 
     func start(mode: HelperRunMode) throws {
         if process?.isRunning == true, activeMode == mode {
@@ -34,7 +35,7 @@ final class HelperLifecycleController {
 
         stop()
 
-        guard let executableURL = locateHelperExecutable() else {
+        guard let executableURL = Self.locateHelperExecutable() else {
             throw HelperLaunchError(message: "The helper executable could not be located.")
         }
 
@@ -59,7 +60,30 @@ final class HelperLifecycleController {
         process?.isRunning == true && activeMode == mode
     }
 
-    private func locateHelperExecutable() -> URL? {
+    func launchAgentStatus() throws -> HelperLaunchAgentStatus {
+        try launchAgentManager.status()
+    }
+
+    @discardableResult
+    func installLaunchAgent() throws -> HelperLaunchAgentStatus {
+        try launchAgentManager.install()
+    }
+
+    @discardableResult
+    func startLaunchAgent() throws -> HelperLaunchAgentStatus {
+        try launchAgentManager.startInstalledService()
+    }
+
+    @discardableResult
+    func stopLaunchAgent() throws -> HelperLaunchAgentStatus {
+        try launchAgentManager.stopInstalledService()
+    }
+
+    func uninstallLaunchAgent() throws {
+        try launchAgentManager.uninstall()
+    }
+
+    static func locateHelperExecutable() -> URL? {
         let fileManager = FileManager.default
         let current = URL(fileURLWithPath: fileManager.currentDirectoryPath)
 
