@@ -11,8 +11,13 @@ APP_VERSION="${APP_VERSION:-0.0.0}"
 "$ROOT_DIR/scripts/build.sh"
 
 BIN_SRC="$ROOT_DIR/build/sagasu-menubar"
+HELPER_SRC="$ROOT_DIR/build/sagasu-helper"
 if [[ ! -f "$BIN_SRC" ]]; then
   echo "Expected binary not found: $BIN_SRC" >&2
+  exit 1
+fi
+if [[ ! -f "$HELPER_SRC" ]]; then
+  echo "Expected helper binary not found: $HELPER_SRC" >&2
   exit 1
 fi
 
@@ -29,6 +34,8 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 # Copy executable into the bundle
 cp "$BIN_SRC" "$MACOS_DIR/sagasu-menubar"
 chmod +x "$MACOS_DIR/sagasu-menubar"
+cp "$HELPER_SRC" "$MACOS_DIR/sagasu-helper"
+chmod +x "$MACOS_DIR/sagasu-helper"
 
 # Optional icon: place an icns at asset/AppIcon.icns
 ICON_SRC="$ROOT_DIR/asset/AppIcon.icns"
