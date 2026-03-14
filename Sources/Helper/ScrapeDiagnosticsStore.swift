@@ -10,7 +10,7 @@ struct ScrapeDiagnosticMetadata: Codable {
     let extra: [String: String]
 }
 
-actor ScrapeDiagnosticsStore {
+final class ScrapeDiagnosticsStore {
     private let fileManager: FileManager
     private let rootDirectory: URL
 
