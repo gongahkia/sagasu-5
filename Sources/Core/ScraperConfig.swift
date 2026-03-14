@@ -1,21 +1,42 @@
 import Foundation
 import SagasuShared
 
-struct ScrapeConfiguration: Sendable {
-    struct Filters: Sendable {
-        var buildings: [String]
-        var floors: [String]
-        var facilityTypes: [String]
-        var equipment: [String]
-        var capacity: String
+public struct ScrapeConfiguration: Sendable {
+    public struct Filters: Sendable {
+        public var buildings: [String]
+        public var floors: [String]
+        public var facilityTypes: [String]
+        public var equipment: [String]
+        public var capacity: String
+
+        public init(
+            buildings: [String],
+            floors: [String],
+            facilityTypes: [String],
+            equipment: [String],
+            capacity: String
+        ) {
+            self.buildings = buildings
+            self.floors = floors
+            self.facilityTypes = facilityTypes
+            self.equipment = equipment
+            self.capacity = capacity
+        }
     }
 
-    var date: String
-    var startTime: String
-    var endTime: String
-    var filters: Filters
+    public var date: String
+    public var startTime: String
+    public var endTime: String
+    public var filters: Filters
 
-    static func load(
+    public init(date: String, startTime: String, endTime: String, filters: Filters) {
+        self.date = date
+        self.startTime = startTime
+        self.endTime = endTime
+        self.filters = filters
+    }
+
+    public static func load(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         now: Date = Date(),
         preferences: ScrapePreferences? = nil
