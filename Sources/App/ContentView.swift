@@ -5,6 +5,8 @@ import SagasuShared
 struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var appState: AppState
+    @State private var email: String = ""
+    @State private var password: String = ""
 
     private var summaryColumns: [GridItem] {
         [GridItem(.flexible()), GridItem(.flexible())]
@@ -23,6 +25,8 @@ struct ContentView: View {
 
                 summaryGrid
                 statusGrid
+                authSection
+                helperSection
                 roomsSection
                 actionsSection
                 footer
@@ -91,6 +95,56 @@ struct ContentView: View {
         }
     }
 
+    private var authSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Authentication")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            TextField("SMU email", text: $email)
+                .textFieldStyle(.roundedBorder)
+            SecureField("SMU password", text: $password)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Save to Keychain") {
+                    appState.saveCredentials(email: email, password: password)
+                    password = ""
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Clear") {
+                    appState.clearCredentials()
+                    email = ""
+                    password = ""
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var helperSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Helper control")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                ForEach(HelperRunMode.allCases) { mode in
+                    Button(appState.helperMode == mode ? "\(mode.title) running" : "Start \(mode.title)") {
+                        appState.startHelper(mode: mode)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Button("Stop") {
+                    appState.stopHelper()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
     private var actionsSection: some View {
         VStack(spacing: 8) {
             Button("Refresh Helper Snapshot") {
@@ -117,6 +171,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("Last helper refresh: \(appState.formattedLastRefresh)")
             Text("Auth store: \(appState.authState.storage_mode.rawValue.capitalized)")
+            Text("Helper mode: \(appState.helperModeDescription)")
             Text(appState.authState.runtime)
         }
         .font(.caption)
