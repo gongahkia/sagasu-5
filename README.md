@@ -13,6 +13,7 @@ Run it back as a macOS menu bar app and desktop client.
 ## Stack
 
 * *Desktop app*: [SwiftUI](https://developer.apple.com/swiftui/)
+* *Core logic*: [Swift](https://developer.apple.com/swift/) shared across tests and the helper
 * *Helper service*: [Swift](https://developer.apple.com/swift/) + [Objective-C](https://developer.apple.com/documentation/objectivec)
 * *Bootstrap data*: archived `Sagasu 4` scrape logs for local fixture seeding
 
@@ -38,12 +39,13 @@ flowchart LR
       class MB,DASH,STATE,CLIENT app
     end
 
-    subgraph helper[Sagasu Helper]
+  subgraph helper[Sagasu Helper]
       LOOP[Scheduled/manual refresh loop]
+      CORE[Pure scraper core]
       STORE[Snapshot store\nApplication Support]
       AUTH[Keychain auth state]
       BRIDGE[Objective-C bridge]
-      class LOOP,STORE,AUTH,BRIDGE helper
+      class LOOP,CORE,STORE,AUTH,BRIDGE helper
     end
   end
 
@@ -56,6 +58,7 @@ flowchart LR
   DASH --> STATE
   STATE --> CLIENT
   CLIENT --> LOOP
+  LOOP --> CORE
   LOOP --> AUTH
   LOOP --> BRIDGE
   LOOP --> STORE
@@ -136,6 +139,8 @@ GitHub Actions now validates the native rewrite on macOS:
 * `.github/workflows/macos-ci.yml` builds both executables
 * `.github/workflows/macos-ci.yml` runs `swift test`
 * `.github/workflows/macos-ci.yml` builds the `.app` bundle
+
+The pure `SagasuCore` target now holds scheduler, parser, merge, diagnostics, and scrape-config logic so that most non-WebKit behavior can be iterated on without touching the macOS runtime layer.
 
 ## Other notes
 
