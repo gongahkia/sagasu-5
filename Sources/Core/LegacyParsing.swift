@@ -1,7 +1,7 @@
 import Foundation
 import SagasuShared
 
-enum LegacyScraperLogic {
+public enum LegacyScraperLogic {
     private static let buildingMap: [String: String] = [
         "KGC": "Kwa Geok Choo Law Library",
         "YPHSL": "Yong Pung How School of Law",
@@ -16,25 +16,25 @@ enum LegacyScraperLogic {
         "SMUC": "SMU Connexion"
     ]
 
-    static func toMinutes(_ time: String) -> Int {
+    public static func toMinutes(_ time: String) -> Int {
         let parts = time.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2 else { return 0 }
         return (parts[0] * 60) + parts[1]
     }
 
-    static func minutesToTimeString(_ minutes: Int) -> String {
+    public static func minutesToTimeString(_ minutes: Int) -> String {
         let hours = max(0, minutes / 60)
         let mins = max(0, minutes % 60)
         return String(format: "%02d:%02d", hours, mins)
     }
 
-    static func parseTimeRange(_ timeRange: String) -> (Int, Int)? {
+    public static func parseTimeRange(_ timeRange: String) -> (Int, Int)? {
         let parts = timeRange.split(separator: "-").map(String.init)
         guard parts.count == 2 else { return nil }
         return (toMinutes(parts[0]), toMinutes(parts[1]))
     }
 
-    static func extractBookingTime(_ raw: String) -> String? {
+    public static func extractBookingTime(_ raw: String) -> String? {
         let pattern = #"Booking Time: (\d{2}:\d{2}-\d{2}:\d{2})"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
@@ -48,7 +48,7 @@ enum LegacyScraperLogic {
         return String(raw[bookingRange])
     }
 
-    static func parseBookingDetails(_ details: String) -> ScrapedRoomsResponse.Room.TimeSlot.BookingDetails? {
+    public static func parseBookingDetails(_ details: String) -> ScrapedRoomsResponse.Room.TimeSlot.BookingDetails? {
         guard !details.isEmpty else { return nil }
 
         func value(for field: String) -> String? {
@@ -79,7 +79,7 @@ enum LegacyScraperLogic {
         )
     }
 
-    static func generateTimeslots(from rawTimeslots: [String]) -> [ScrapedRoomsResponse.Room.TimeSlot] {
+    public static func generateTimeslots(from rawTimeslots: [String]) -> [ScrapedRoomsResponse.Room.TimeSlot] {
         struct RawSlot {
             let range: String
             let status: String
@@ -169,7 +169,7 @@ enum LegacyScraperLogic {
         return output
     }
 
-    static func mapTimeslotsToRooms(rawRooms: [String], rawTimeslots: [String]) -> [String: [ScrapedRoomsResponse.Room.TimeSlot]] {
+    public static func mapTimeslotsToRooms(rawRooms: [String], rawTimeslots: [String]) -> [String: [ScrapedRoomsResponse.Room.TimeSlot]] {
         var result: [String: [ScrapedRoomsResponse.Room.TimeSlot]] = [:]
         let roomStartPattern = try? NSRegularExpression(pattern: #"^\(00:00-\d{2}:\d{2}\) \(not available\)$"#)
 
@@ -205,7 +205,7 @@ enum LegacyScraperLogic {
         return result
     }
 
-    static func extractRoomMetadata(
+    public static func extractRoomMetadata(
         roomName: String,
         filters: ScrapeConfiguration.Filters
     ) -> (buildingCode: String, building: String, floor: String, facilityType: String, equipment: [String]) {
@@ -230,7 +230,7 @@ enum LegacyScraperLogic {
         return (buildingCode, building, floor, facilityType, filters.equipment)
     }
 
-    static func calculateAvailabilitySummary(
+    public static func calculateAvailabilitySummary(
         timeslots: [ScrapedRoomsResponse.Room.TimeSlot],
         now: Date = Date()
     ) -> ScrapedRoomsResponse.Room.AvailabilitySummary {
@@ -271,7 +271,7 @@ enum LegacyScraperLogic {
         )
     }
 
-    static func parseBookingRow(_ cells: [String]) -> ScrapedBookingsResponse.Booking? {
+    public static func parseBookingRow(_ cells: [String]) -> ScrapedBookingsResponse.Booking? {
         guard cells.count >= 9 else { return nil }
 
         let dateTimeRaw = cells[2]
@@ -293,7 +293,7 @@ enum LegacyScraperLogic {
         )
     }
 
-    static func parseTaskRow(_ cells: [String]) -> ScrapedTasksResponse.Task? {
+    public static func parseTaskRow(_ cells: [String]) -> ScrapedTasksResponse.Task? {
         guard cells.count >= 8 else { return nil }
 
         let dateTimeRaw = cells[2]
@@ -313,7 +313,7 @@ enum LegacyScraperLogic {
         )
     }
 
-    static func bookingStatistics(from bookings: [ScrapedBookingsResponse.Booking]) -> ScrapedBookingsResponse.Statistics {
+    public static func bookingStatistics(from bookings: [ScrapedBookingsResponse.Booking]) -> ScrapedBookingsResponse.Statistics {
         .init(
             total_bookings: bookings.count,
             confirmed_bookings: bookings.filter { $0.status == "Confirmed" }.count,
@@ -322,7 +322,7 @@ enum LegacyScraperLogic {
         )
     }
 
-    static func taskStatistics(from tasks: [ScrapedTasksResponse.Task]) -> ScrapedTasksResponse.Statistics {
+    public static func taskStatistics(from tasks: [ScrapedTasksResponse.Task]) -> ScrapedTasksResponse.Statistics {
         .init(
             total_tasks: tasks.count,
             pending_tasks: tasks.filter { $0.status == "Pending Confirmation" }.count,
@@ -331,7 +331,7 @@ enum LegacyScraperLogic {
         )
     }
 
-    static func roomStatistics(from rooms: [ScrapedRoomsResponse.Room]) -> ScrapedRoomsResponse.Statistics {
+    public static func roomStatistics(from rooms: [ScrapedRoomsResponse.Room]) -> ScrapedRoomsResponse.Statistics {
         let available = rooms.filter { $0.availability_summary.is_available_now }.count
         let partiallyAvailable = rooms.filter { $0.availability_summary.free_slots_count > 0 }.count
         let booked = rooms.filter { $0.availability_summary.free_slots_count == 0 }.count
@@ -346,50 +346,50 @@ enum LegacyScraperLogic {
 
     private static func splitDateTime(_ raw: String) -> (date: String, dayOfWeek: String?, startTime: String, endTime: String, durationHours: Double) {
         let lines = raw
-            .split(whereSeparator: \.isNewline)
-            .map(String.init)
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-        let datePart = lines.first ?? ""
-        let timePart = lines.dropFirst().first ?? ""
+        let dateLine = lines.first ?? ""
+        let timeLine = lines.dropFirst().first ?? ""
 
-        let date = firstMatch(in: datePart, pattern: #"(\d{2}-[A-Za-z]{3}-\d{4})"#) ?? ""
-        let dayOfWeek = firstMatch(in: datePart, pattern: #"\(([A-Za-z]{3})\)"#)
+        let datePattern = #"^(\d{2}-[A-Za-z]{3}-\d{4})(?: \(([^)]+)\))?"#
+        let timePattern = #"(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2}).*?\(([\d.]+)hrs\)"#
 
-        let timeMatch = firstMatches(in: timePart, pattern: #"(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})"#)
-        let durationMatch = firstMatch(in: timePart, pattern: #"\((\d+(?:\.\d+)?)hrs?\)"#)
+        let dateRegex = try? NSRegularExpression(pattern: datePattern)
+        let timeRegex = try? NSRegularExpression(pattern: timePattern)
 
-        return (
-            date: date,
-            dayOfWeek: dayOfWeek,
-            startTime: timeMatch.first ?? "",
-            endTime: timeMatch.dropFirst().first ?? "",
-            durationHours: Double(durationMatch ?? "") ?? 0
-        )
-    }
+        var parsedDate = dateLine
+        var dayOfWeek: String?
 
-    private static func firstMatch(in value: String, pattern: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(value.startIndex..<value.endIndex, in: value)
-        guard
-            let match = regex.firstMatch(in: value, options: [], range: range),
-            let captureRange = Range(match.range(at: 1), in: value)
-        else {
-            return nil
+        if let dateRegex,
+           let match = dateRegex.firstMatch(in: dateLine, options: [], range: NSRange(dateLine.startIndex..<dateLine.endIndex, in: dateLine))
+        {
+            if let range = Range(match.range(at: 1), in: dateLine) {
+                parsedDate = String(dateLine[range])
+            }
+            if let range = Range(match.range(at: 2), in: dateLine) {
+                dayOfWeek = String(dateLine[range])
+            }
         }
 
-        return String(value[captureRange])
-    }
+        var start = ""
+        var end = ""
+        var duration = 0.0
 
-    private static func firstMatches(in value: String, pattern: String) -> [String] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-        let range = NSRange(value.startIndex..<value.endIndex, in: value)
-        guard let match = regex.firstMatch(in: value, options: [], range: range) else {
-            return []
+        if let timeRegex,
+           let match = timeRegex.firstMatch(in: timeLine, options: [], range: NSRange(timeLine.startIndex..<timeLine.endIndex, in: timeLine))
+        {
+            if let range = Range(match.range(at: 1), in: timeLine) {
+                start = String(timeLine[range])
+            }
+            if let range = Range(match.range(at: 2), in: timeLine) {
+                end = String(timeLine[range])
+            }
+            if let range = Range(match.range(at: 3), in: timeLine) {
+                duration = Double(timeLine[range]) ?? 0
+            }
         }
 
-        return (1..<match.numberOfRanges).compactMap { index in
-            guard let captureRange = Range(match.range(at: index), in: value) else { return nil }
-            return String(value[captureRange])
-        }
+        return (parsedDate, dayOfWeek, start, end, duration)
     }
 }
