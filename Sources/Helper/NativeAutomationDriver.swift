@@ -27,6 +27,19 @@ final class NativeAutomationDriver {
         session.currentURLString()
     }
 
+    func pageHTML() throws -> String? {
+        try evaluate("document.documentElement ? document.documentElement.outerHTML : null") as? String
+    }
+
+    func snapshotPNGData() throws -> Data? {
+        var error: NSError?
+        let data = session.snapshotPNGDataWithError(&error)
+        if let error {
+            throw error
+        }
+        return data
+    }
+
     func waitForURL(_ pattern: String, timeout: TimeInterval = 30) throws {
         var error: NSError?
         let success = session.waitForURLMatching(pattern, timeout: timeout, error: &error)
