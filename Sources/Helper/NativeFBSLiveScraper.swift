@@ -1,4 +1,5 @@
 import Foundation
+import SagasuAutomationObjC
 import SagasuCore
 import SagasuShared
 
@@ -137,7 +138,7 @@ final class NativeFBSLiveScraper {
                 success: true,
                 error: nil,
                 scraper_version: "rooms-native-v1",
-                source: SagasuAutomationRuntimeDescription() as String
+                source: SagasuAutomationRuntimeDescription()
             ),
             config: .init(
                 date: config.date,
@@ -175,7 +176,7 @@ final class NativeFBSLiveScraper {
                 success: true,
                 error: nil,
                 scraper_version: "bookings-native-v1",
-                source: SagasuAutomationRuntimeDescription() as String
+                source: SagasuAutomationRuntimeDescription()
             ),
             statistics: LegacyScraperLogic.bookingStatistics(from: bookings),
             bookings: bookings
@@ -201,7 +202,7 @@ final class NativeFBSLiveScraper {
                 success: true,
                 error: nil,
                 scraper_version: "tasks-native-v1",
-                source: SagasuAutomationRuntimeDescription() as String
+                source: SagasuAutomationRuntimeDescription()
             ),
             statistics: LegacyScraperLogic.taskStatistics(from: tasks),
             tasks: tasks

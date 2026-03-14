@@ -16,11 +16,7 @@ final class NativeAutomationDriver {
     private let session = SagasuAutomationSession()
 
     func load(_ url: String, timeout: TimeInterval = 60) throws {
-        var error: NSError?
-        let success = session.loadURLString(url, timeout: timeout, error: &error)
-        if !success {
-            throw error ?? NativeAutomationError.actionFailed("Failed to load \(url).")
-        }
+        _ = try session.loadURLString(url, timeout: timeout)
     }
 
     func currentURL() -> String? {
@@ -32,37 +28,19 @@ final class NativeAutomationDriver {
     }
 
     func snapshotPNGData() throws -> Data? {
-        var error: NSError?
-        let data = session.snapshotPNGDataWithError(&error)
-        if let error {
-            throw error
-        }
-        return data
+        try session.snapshotPNGData()
     }
 
     func waitForURL(_ pattern: String, timeout: TimeInterval = 30) throws {
-        var error: NSError?
-        let success = session.waitForURLMatching(pattern, timeout: timeout, error: &error)
-        if !success {
-            throw error ?? NativeAutomationError.actionFailed("Timed out waiting for URL pattern \(pattern).")
-        }
+        _ = try session.waitForURLMatching(pattern, timeout: timeout)
     }
 
     func waitFor(scriptCondition script: String, timeout: TimeInterval = 30, pollInterval: TimeInterval = 0.25) throws {
-        var error: NSError?
-        let success = session.waitForJavaScriptCondition(script, timeout: timeout, pollInterval: pollInterval, error: &error)
-        if !success {
-            throw error ?? NativeAutomationError.actionFailed("Timed out waiting for JavaScript condition.")
-        }
+        _ = try session.waitForJavaScriptCondition(script, timeout: timeout, pollInterval: pollInterval)
     }
 
     func evaluate(_ script: String) throws -> Any? {
-        var error: NSError?
-        let result = session.evaluateJavaScriptSync(script, error: &error)
-        if let error {
-            throw error
-        }
-        return result
+        try session.evaluateJavaScriptSync(script)
     }
 
     func click(selector: String) throws {
@@ -215,7 +193,7 @@ final class NativeAutomationDriver {
     }
 
     func sleep(milliseconds: Int) {
-        session.sleepForMilliseconds(milliseconds)
+        session.sleep(forMilliseconds: milliseconds)
     }
 
     private func expectTrue(_ script: String, message: String) throws {

@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 
-FOUNDATION_EXPORT NSString *SagasuAutomationRuntimeDescription(void);
+FOUNDATION_EXPORT NSString * _Nonnull SagasuAutomationRuntimeDescription(void);
 FOUNDATION_EXPORT BOOL SagasuAutomationHasCredentialInputs(NSString * _Nullable email, NSString * _Nullable password);
 
 NS_ASSUME_NONNULL_BEGIN
