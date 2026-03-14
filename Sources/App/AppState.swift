@@ -17,9 +17,11 @@ final class AppState: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var helperConsole: String = ""
+    @Published private(set) var helperMode: HelperRunMode?
     @Published var menuBarTitle: String = "Loading…"
 
     private let client: HelperClientProtocol
+    private let lifecycleController = HelperLifecycleController()
     private let iso8601 = ISO8601DateFormatter.sagasuInternetDateTime
 
     private var pollTask: Task<Void, Never>?
@@ -94,6 +96,10 @@ final class AppState: ObservableObject {
         Array((tasks?.tasks ?? []).prefix(8))
     }
 
+    var helperModeDescription: String {
+        helperMode?.title ?? "Stopped"
+    }
+
     func refresh(manual: Bool = true) {
         guard !isLoading else { return }
 
@@ -115,6 +121,41 @@ final class AppState: ObservableObject {
         case .stale: return "Stale"
         case .failed: return "Failed"
         }
+    }
+
+    func saveCredentials(email: String, password: String) {
+        do {
+            try SharedCredentialsStore.save(.init(email: email, password: password))
+            errorMessage = nil
+            Task { await reloadCachedSnapshot() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func clearCredentials() {
+        do {
+            try SharedCredentialsStore.clear()
+            errorMessage = nil
+            Task { await reloadCachedSnapshot() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startHelper(mode: HelperRunMode) {
+        do {
+            try lifecycleController.start(mode: mode)
+            helperMode = mode
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func stopHelper() {
+        lifecycleController.stop()
+        helperMode = nil
     }
 
     private func refreshAsync(manual: Bool) async {
