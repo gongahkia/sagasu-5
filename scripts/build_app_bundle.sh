@@ -27,6 +27,7 @@ CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 INFO_PLIST="$CONTENTS_DIR/Info.plist"
+FIXTURE_SRC_DIR="$ROOT_DIR/Fixtures"
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
@@ -36,6 +37,11 @@ cp "$BIN_SRC" "$MACOS_DIR/sagasu-menubar"
 chmod +x "$MACOS_DIR/sagasu-menubar"
 cp "$HELPER_SRC" "$MACOS_DIR/sagasu-helper"
 chmod +x "$MACOS_DIR/sagasu-helper"
+
+if [[ -d "$FIXTURE_SRC_DIR" ]]; then
+  mkdir -p "$RESOURCES_DIR/Fixtures"
+  cp -R "$FIXTURE_SRC_DIR"/. "$RESOURCES_DIR/Fixtures/"
+fi
 
 # Optional icon: place an icns at asset/AppIcon.icns
 ICON_SRC="$ROOT_DIR/asset/AppIcon.icns"
