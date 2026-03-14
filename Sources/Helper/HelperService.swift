@@ -5,11 +5,16 @@ import SagasuShared
 actor SagasuHelperService {
     private let store: SnapshotStore
     private let bootstrapper = ArchivedSnapshotBootstrapper()
+    private let configProvider: () -> ScrapeConfiguration
 
     private static let sgtTimeZone = TimeZone(identifier: "Asia/Singapore")!
 
-    init(store: SnapshotStore) {
+    init(
+        store: SnapshotStore,
+        configProvider: @escaping () -> ScrapeConfiguration = { .load() }
+    ) {
         self.store = store
+        self.configProvider = configProvider
     }
 
     func currentSnapshot() async throws -> ServiceSnapshot {
@@ -32,9 +37,8 @@ actor SagasuHelperService {
         let storedCredentials = try? SharedCredentialsStore.load()
         let runtime = SagasuAutomationRuntimeDescription()
         let hasCredentials = SagasuAutomationHasCredentialInputs(storedCredentials?.email, storedCredentials?.password)
-
-        var snapshot = (try? await store.loadSnapshot()) ?? ServiceSnapshot()
-        let archived = try bootstrapper.load()
+        let fixtureSnapshot = try bootstrapper.load()
+        var snapshot = (try? await store.loadSnapshot()) ?? fixtureSnapshot
         let now = Date()
         let nowString = now.iso8601String
 
@@ -43,16 +47,55 @@ actor SagasuHelperService {
             has_credentials: hasCredentials,
             storage_mode: SharedCredentialsStore.loadFromEnvironment() != nil ? .environment : (storedCredentials != nil ? .keychain : .none),
             runtime: runtime,
-            last_error: hasCredentials ? nil : "Credentials are missing; helper is using archived fixtures until the native browser automation is completed."
+            last_error: hasCredentials ? nil : "Credentials are missing; helper is serving the last local snapshot or bundled fixtures."
         )
 
-        snapshot.rooms = archived.rooms.map { self.rewritten($0, runtime: runtime, startedAt: startedAt, label: "rooms-swift-fixture") }
-        snapshot.bookings = archived.bookings.map { self.rewritten($0, runtime: runtime, startedAt: startedAt, label: "bookings-swift-fixture") }
-        snapshot.tasks = archived.tasks.map { self.rewritten($0, runtime: runtime, startedAt: startedAt, label: "tasks-swift-fixture") }
+        guard let credentials = storedCredentials, hasCredentials else {
+            snapshot.rooms = snapshot.rooms ?? fixtureSnapshot.rooms
+            snapshot.bookings = snapshot.bookings ?? fixtureSnapshot.bookings
+            snapshot.tasks = snapshot.tasks ?? fixtureSnapshot.tasks
 
-        snapshot.setStatus(makeStatus(for: .rooms, payloadPresent: snapshot.rooms != nil, attemptAt: nowString))
-        snapshot.setStatus(makeStatus(for: .bookings, payloadPresent: snapshot.bookings != nil, attemptAt: nowString))
-        snapshot.setStatus(makeStatus(for: .tasks, payloadPresent: snapshot.tasks != nil, attemptAt: nowString))
+            snapshot.setStatus(staleStatus(for: .rooms, attemptAt: nowString, currentSuccessAt: snapshot.rooms?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
+            snapshot.setStatus(staleStatus(for: .bookings, attemptAt: nowString, currentSuccessAt: snapshot.bookings?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
+            snapshot.setStatus(staleStatus(for: .tasks, attemptAt: nowString, currentSuccessAt: snapshot.tasks?.metadata.scraped_at, message: snapshot.auth_state.last_error ?? "No credentials configured."))
+
+            try await store.saveSnapshot(snapshot)
+            try await store.appendConsole("[\(Date().iso8601String)] helper refresh completed without credentials")
+            return snapshot
+        }
+
+        let liveScraper = NativeFBSLiveScraper(config: configProvider())
+        let outputs = liveScraper.scrapeAll(credentials: credentials)
+
+        let roomsMerge = mergeRooms(
+            outputs.rooms,
+            current: snapshot.rooms,
+            fallback: fixtureSnapshot.rooms,
+            attemptAt: nowString
+        )
+        snapshot.rooms = roomsMerge.payload
+        snapshot.setStatus(roomsMerge.status)
+        try await store.appendConsole("[\(Date().iso8601String)] rooms status: \(roomsMerge.status.state.rawValue)")
+
+        let bookingsMerge = mergeBookings(
+            outputs.bookings,
+            current: snapshot.bookings,
+            fallback: fixtureSnapshot.bookings,
+            attemptAt: nowString
+        )
+        snapshot.bookings = bookingsMerge.payload
+        snapshot.setStatus(bookingsMerge.status)
+        try await store.appendConsole("[\(Date().iso8601String)] bookings status: \(bookingsMerge.status.state.rawValue)")
+
+        let tasksMerge = mergeTasks(
+            outputs.tasks,
+            current: snapshot.tasks,
+            fallback: fixtureSnapshot.tasks,
+            attemptAt: nowString
+        )
+        snapshot.tasks = tasksMerge.payload
+        snapshot.setStatus(tasksMerge.status)
+        try await store.appendConsole("[\(Date().iso8601String)] tasks status: \(tasksMerge.status.state.rawValue)")
 
         try await store.saveSnapshot(snapshot)
         try await store.appendConsole("[\(Date().iso8601String)] helper refresh completed")
@@ -80,6 +123,16 @@ actor SagasuHelperService {
         )
     }
 
+    private func staleStatus(for dataset: ScrapeDataset, attemptAt: String, currentSuccessAt: String?, message: String) -> DatasetStatus {
+        DatasetStatus(
+            dataset: dataset,
+            state: currentSuccessAt == nil ? .failed : .stale,
+            last_attempt_at: attemptAt,
+            last_success_at: currentSuccessAt,
+            message: message
+        )
+    }
+
     private func nextRefreshDelay(from now: Date) -> TimeInterval {
         var calendar = Calendar.current
         calendar.timeZone = Self.sgtTimeZone
@@ -100,51 +153,129 @@ actor SagasuHelperService {
         return max(60, next.timeIntervalSince(now))
     }
 
-    private func rewritten(
-        _ payload: ScrapedRoomsResponse,
-        runtime: String,
-        startedAt: Date,
-        label: String
-    ) -> ScrapedRoomsResponse {
-        var updated = payload
-        updated.metadata.scraped_at = Date().iso8601String
-        updated.metadata.scrape_duration_ms = Int(Date().timeIntervalSince(startedAt) * 1000)
-        updated.metadata.scraper_version = label
-        updated.metadata.source = runtime
-        updated.metadata.error = nil
-        updated.metadata.success = true
-        return updated
+    private func mergeRooms(
+        _ result: Result<ScrapedRoomsResponse, Error>?,
+        current: ScrapedRoomsResponse?,
+        fallback: ScrapedRoomsResponse?,
+        attemptAt: String
+    ) -> (payload: ScrapedRoomsResponse?, status: DatasetStatus) {
+        switch result {
+        case let .success(payload):
+            return (
+                payload,
+                DatasetStatus(
+                    dataset: .rooms,
+                    state: .success,
+                    last_attempt_at: attemptAt,
+                    last_success_at: payload.metadata.scraped_at,
+                    message: "Live native scrape completed."
+                )
+            )
+        case let .failure(error):
+            let payload = current ?? fallback
+            return (
+                payload,
+                staleStatus(
+                    for: .rooms,
+                    attemptAt: attemptAt,
+                    currentSuccessAt: payload?.metadata.scraped_at,
+                    message: error.localizedDescription
+                )
+            )
+        case .none:
+            return (
+                current ?? fallback,
+                staleStatus(
+                    for: .rooms,
+                    attemptAt: attemptAt,
+                    currentSuccessAt: (current ?? fallback)?.metadata.scraped_at,
+                    message: "The rooms scraper did not produce a result."
+                )
+            )
+        }
     }
 
-    private func rewritten(
-        _ payload: ScrapedBookingsResponse,
-        runtime: String,
-        startedAt: Date,
-        label: String
-    ) -> ScrapedBookingsResponse {
-        var updated = payload
-        updated.metadata.scraped_at = Date().iso8601String
-        updated.metadata.scrape_duration_ms = Int(Date().timeIntervalSince(startedAt) * 1000)
-        updated.metadata.scraper_version = label
-        updated.metadata.source = runtime
-        updated.metadata.error = nil
-        updated.metadata.success = true
-        return updated
+    private func mergeBookings(
+        _ result: Result<ScrapedBookingsResponse, Error>?,
+        current: ScrapedBookingsResponse?,
+        fallback: ScrapedBookingsResponse?,
+        attemptAt: String
+    ) -> (payload: ScrapedBookingsResponse?, status: DatasetStatus) {
+        switch result {
+        case let .success(payload):
+            return (
+                payload,
+                DatasetStatus(
+                    dataset: .bookings,
+                    state: .success,
+                    last_attempt_at: attemptAt,
+                    last_success_at: payload.metadata.scraped_at,
+                    message: "Live native scrape completed."
+                )
+            )
+        case let .failure(error):
+            let payload = current ?? fallback
+            return (
+                payload,
+                staleStatus(
+                    for: .bookings,
+                    attemptAt: attemptAt,
+                    currentSuccessAt: payload?.metadata.scraped_at,
+                    message: error.localizedDescription
+                )
+            )
+        case .none:
+            return (
+                current ?? fallback,
+                staleStatus(
+                    for: .bookings,
+                    attemptAt: attemptAt,
+                    currentSuccessAt: (current ?? fallback)?.metadata.scraped_at,
+                    message: "The bookings scraper did not produce a result."
+                )
+            )
+        }
     }
 
-    private func rewritten(
-        _ payload: ScrapedTasksResponse,
-        runtime: String,
-        startedAt: Date,
-        label: String
-    ) -> ScrapedTasksResponse {
-        var updated = payload
-        updated.metadata.scraped_at = Date().iso8601String
-        updated.metadata.scrape_duration_ms = Int(Date().timeIntervalSince(startedAt) * 1000)
-        updated.metadata.scraper_version = label
-        updated.metadata.source = runtime
-        updated.metadata.error = nil
-        updated.metadata.success = true
-        return updated
+    private func mergeTasks(
+        _ result: Result<ScrapedTasksResponse, Error>?,
+        current: ScrapedTasksResponse?,
+        fallback: ScrapedTasksResponse?,
+        attemptAt: String
+    ) -> (payload: ScrapedTasksResponse?, status: DatasetStatus) {
+        switch result {
+        case let .success(payload):
+            return (
+                payload,
+                DatasetStatus(
+                    dataset: .tasks,
+                    state: .success,
+                    last_attempt_at: attemptAt,
+                    last_success_at: payload.metadata.scraped_at,
+                    message: "Live native scrape completed."
+                )
+            )
+        case let .failure(error):
+            let payload = current ?? fallback
+            return (
+                payload,
+                staleStatus(
+                    for: .tasks,
+                    attemptAt: attemptAt,
+                    currentSuccessAt: payload?.metadata.scraped_at,
+                    message: error.localizedDescription
+                )
+            )
+        case .none:
+            return (
+                current ?? fallback,
+                staleStatus(
+                    for: .tasks,
+                    attemptAt: attemptAt,
+                    currentSuccessAt: (current ?? fallback)?.metadata.scraped_at,
+                    message: "The tasks scraper did not produce a result."
+                )
+            )
+        }
     }
 }
