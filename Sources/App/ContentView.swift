@@ -27,6 +27,7 @@ struct ContentView: View {
                 statusGrid
                 authSection
                 helperSection
+                backgroundServiceSection
                 roomsSection
                 actionsSection
                 footer
@@ -145,6 +146,40 @@ struct ContentView: View {
         }
     }
 
+    private var backgroundServiceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Background service")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Text(appState.launchAgentDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Button("Install") {
+                    appState.installBackgroundService()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Start") {
+                    appState.startBackgroundService()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Stop") {
+                    appState.stopBackgroundService()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Remove") {
+                    appState.uninstallBackgroundService()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
     private var actionsSection: some View {
         VStack(spacing: 8) {
             Button("Refresh Helper Snapshot") {
@@ -172,6 +207,7 @@ struct ContentView: View {
             Text("Last helper refresh: \(appState.formattedLastRefresh)")
             Text("Auth store: \(appState.authState.storage_mode.rawValue.capitalized)")
             Text("Helper mode: \(appState.helperModeDescription)")
+            Text("Launch agent: \(appState.launchAgentDescription)")
             Text(appState.authState.runtime)
         }
         .font(.caption)
