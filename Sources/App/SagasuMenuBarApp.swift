@@ -9,6 +9,7 @@ struct SagasuMenuBarApp: App {
             DesktopDashboardView()
                 .environmentObject(appState)
         }
+        .defaultSize(width: 1180, height: 780)
 
         MenuBarExtra {
             ContentView()
