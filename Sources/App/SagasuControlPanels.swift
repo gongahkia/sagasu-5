@@ -1,0 +1,228 @@
+import SwiftUI
+import SagasuShared
+
+struct CredentialsPanel: View {
+    let title: String
+    let subtitle: String?
+    @Binding var email: String
+    @Binding var password: String
+    let onSave: () -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        SagasuPanel(
+            title: title,
+            subtitle: subtitle,
+            systemImage: "person.crop.circle.badge.key"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                TextField("SMU email", text: $email)
+                    .textFieldStyle(.roundedBorder)
+
+                SecureField("SMU password", text: $password)
+                    .textFieldStyle(.roundedBorder)
+
+                HStack(spacing: 10) {
+                    Button("Save to Keychain", action: onSave)
+                        .buttonStyle(.borderedProminent)
+
+                    Button("Clear Credentials", action: onClear)
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+}
+
+struct HelperControlsPanel: View {
+    let currentMode: HelperRunMode?
+    let currentDescription: String
+    let onStart: (HelperRunMode) -> Void
+    let onStop: () -> Void
+
+    var body: some View {
+        SagasuPanel(
+            title: "Helper control",
+            subtitle: "Start the helper directly for ad-hoc refreshes or XPC integration.",
+            systemImage: "cpu"
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                SagasuStatusPill(
+                    title: "Mode",
+                    value: currentDescription,
+                    tint: currentMode == nil ? .secondary : SagasuTheme.brand
+                )
+
+                HStack(spacing: 10) {
+                    ForEach(HelperRunMode.allCases) { mode in
+                        helperButton(for: mode)
+                    }
+
+                    Button("Stop", action: onStop)
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func helperButton(for mode: HelperRunMode) -> some View {
+        if currentMode == mode {
+            Button("\(mode.title) Active") {
+                onStart(mode)
+            }
+            .buttonStyle(.borderedProminent)
+        } else {
+            Button("Start \(mode.title)") {
+                onStart(mode)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+}
+
+struct BackgroundServicePanel: View {
+    let status: HelperLaunchAgentStatus?
+    let summary: String
+    let showsPaths: Bool
+    let onInstall: () -> Void
+    let onStart: () -> Void
+    let onStop: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        SagasuPanel(
+            title: "Background service",
+            subtitle: "Install a LaunchAgent when you want scheduled refreshes to keep local data current.",
+            systemImage: "clock.arrow.2.circlepath"
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                SagasuStatusPill(
+                    title: "Launch agent",
+                    value: summary,
+                    tint: statusTint
+                )
+
+                if showsPaths, let status {
+                    VStack(alignment: .leading, spacing: 8) {
+                        pathRow(title: "Plist", value: status.plistURL.path)
+                        pathRow(title: "Log", value: status.logURL.path)
+
+                        if let helperURL = status.helperURL {
+                            pathRow(title: "Helper", value: helperURL.path)
+                        }
+                    }
+                }
+
+                LazyVGrid(columns: actionColumns, spacing: 10) {
+                    Button("Install", action: onInstall)
+                        .buttonStyle(.borderedProminent)
+
+                    Button("Start", action: onStart)
+                        .buttonStyle(.bordered)
+
+                    Button("Stop", action: onStop)
+                        .buttonStyle(.bordered)
+
+                    Button("Remove", action: onRemove)
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var actionColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
+    }
+
+    private var statusTint: Color {
+        guard let status else { return .secondary }
+        if status.isLoaded {
+            return .green
+        }
+        if status.isInstalled {
+            return .yellow
+        }
+        return .secondary
+    }
+
+    @ViewBuilder
+    private func pathRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct ScrapePreferencesPanel: View {
+    @Binding var preferences: ScrapePreferences
+    let onSave: () -> Void
+
+    var body: some View {
+        SagasuPanel(
+            title: "Scrape preferences",
+            subtitle: "Tune the helper inputs that shape the next refresh payload.",
+            systemImage: "slider.horizontal.3"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    textField(title: "Date", text: $preferences.date, prompt: "TODAY")
+                    textField(title: "Start", text: $preferences.start_time, prompt: "08:00")
+                    textField(title: "End", text: $preferences.end_time, prompt: "22:00")
+                    textField(title: "Capacity", text: $preferences.capacity, prompt: "Optional")
+                }
+
+                textField(title: "Buildings", text: csvBinding(for: \.buildings), prompt: "Comma-separated")
+                textField(title: "Floors", text: csvBinding(for: \.floors), prompt: "Comma-separated")
+                textField(title: "Facility types", text: csvBinding(for: \.facility_types), prompt: "Comma-separated")
+                textField(title: "Equipment", text: csvBinding(for: \.equipment), prompt: "Comma-separated")
+
+                Button("Save preferences", action: onSave)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    private var columns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
+    }
+
+    @ViewBuilder
+    private func textField(title: String, text: Binding<String>, prompt: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(prompt, text: text)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private func csvBinding(for keyPath: WritableKeyPath<ScrapePreferences, [String]>) -> Binding<String> {
+        Binding(
+            get: {
+                preferences[keyPath: keyPath].joined(separator: ", ")
+            },
+            set: { value in
+                preferences[keyPath: keyPath] = value
+                    .split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
+        )
+    }
+}

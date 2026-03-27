@@ -8,266 +8,278 @@ struct ContentView: View {
     @State private var email: String = ""
     @State private var password: String = ""
 
-    private var summaryColumns: [GridItem] {
-        [GridItem(.flexible()), GridItem(.flexible())]
-    }
-
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header
+            VStack(alignment: .leading, spacing: 14) {
+                heroBanner
 
                 if let errorMessage = appState.errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    errorPanel(message: errorMessage)
                 }
 
-                summaryGrid
-                statusGrid
-                authSection
-                helperSection
-                backgroundServiceSection
-                roomsSection
-                actionsSection
-                footer
+                snapshotOverviewPanel
+
+                CredentialsPanel(
+                    title: "Authentication",
+                    subtitle: "Store SMU credentials locally in the Keychain before refreshing.",
+                    email: $email,
+                    password: $password,
+                    onSave: saveCredentials,
+                    onClear: clearCredentials
+                )
+
+                HelperControlsPanel(
+                    currentMode: appState.helperMode,
+                    currentDescription: appState.helperModeDescription,
+                    onStart: appState.startHelper(mode:),
+                    onStop: appState.stopHelper
+                )
+
+                BackgroundServicePanel(
+                    status: appState.launchAgentStatus,
+                    summary: appState.launchAgentDescription,
+                    showsPaths: false,
+                    onInstall: appState.installBackgroundService,
+                    onStart: appState.startBackgroundService,
+                    onStop: appState.stopBackgroundService,
+                    onRemove: appState.uninstallBackgroundService
+                )
+
+                roomsPanel
+                actionsPanel
+                runtimePanel
             }
-            .padding(14)
+            .padding(16)
         }
-        .frame(width: 430, height: 560)
+        .background {
+            SagasuScreenBackground()
+        }
+        .frame(width: 460, height: 620)
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Sagasu 5")
-                .font(.title3.weight(.semibold))
-            Text("Local desktop client backed by the native helper service.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private var heroBanner: some View {
+        SagasuHeroBanner(
+            eyebrow: "Menu Bar Console",
+            title: "Sagasu 5",
+            subtitle: "Native helper snapshots, credentials, and refresh controls stay one click away.",
+            systemImage: "sparkles.rectangle.stack"
+        ) {
+            HStack(spacing: 10) {
+                heroPill(
+                    title: "Free now",
+                    value: String(appState.rooms?.statistics.available_rooms ?? 0)
+                )
+                heroPill(title: "Refresh", value: appState.formattedLastRefresh)
+                heroPill(title: "Helper", value: appState.helperModeDescription)
+            }
         }
     }
 
-    private var summaryGrid: some View {
-        LazyVGrid(columns: summaryColumns, spacing: 8) {
-            SummaryTile(title: "Free now", value: String(appState.rooms?.statistics.available_rooms ?? 0))
-            SummaryTile(title: "Partial", value: String(appState.rooms?.statistics.partially_available_rooms ?? 0))
-            SummaryTile(title: "Bookings", value: String(appState.bookings?.statistics.total_bookings ?? 0))
-            SummaryTile(title: "Tasks", value: String(appState.tasks?.statistics.total_tasks ?? 0))
-        }
-    }
+    private var snapshotOverviewPanel: some View {
+        SagasuPanel(
+            title: "Local snapshot",
+            subtitle: "A compact view of the helper-owned cache that drives the menu bar status.",
+            systemImage: "chart.bar.xaxis"
+        ) {
+            LazyVGrid(columns: summaryColumns, spacing: 10) {
+                SagasuMetricCard(
+                    title: "Free now",
+                    value: String(appState.rooms?.statistics.available_rooms ?? 0),
+                    detail: "Immediately available rooms",
+                    systemImage: "door.left.hand.open",
+                    tint: .green
+                )
+                SagasuMetricCard(
+                    title: "Partial",
+                    value: String(appState.rooms?.statistics.partially_available_rooms ?? 0),
+                    detail: "Rooms with mixed timeslots",
+                    systemImage: "clock.badge.exclamationmark",
+                    tint: .orange
+                )
+                SagasuMetricCard(
+                    title: "Bookings",
+                    value: String(appState.bookings?.statistics.total_bookings ?? 0),
+                    detail: "Cached booking rows",
+                    systemImage: "calendar",
+                    tint: SagasuTheme.brandSecondary
+                )
+                SagasuMetricCard(
+                    title: "Tasks",
+                    value: String(appState.tasks?.statistics.total_tasks ?? 0),
+                    detail: "Cached task rows",
+                    systemImage: "checklist",
+                    tint: SagasuTheme.brand
+                )
+            }
 
-    private var statusGrid: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Service state")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            ForEach(appState.statuses) { status in
-                HStack {
-                    Text(status.dataset.rawValue.capitalized)
-                        .fontWeight(.medium)
-                    Spacer()
-                    Text(appState.formattedStatus(status))
-                        .foregroundStyle(color(for: status.state))
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(appState.statuses) { status in
+                    HStack {
+                        Text(status.dataset.rawValue.capitalized)
+                            .font(.subheadline.weight(.semibold))
+                        Spacer(minLength: 0)
+                        SagasuStatusPill(
+                            title: "Status",
+                            value: appState.formattedStatus(status),
+                            tint: SagasuTheme.stateColor(for: status.state)
+                        )
+                    }
                 }
-                .font(.caption)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
     }
 
-    private var roomsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Rooms")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            if !appState.nextAvailable.isEmpty {
-                RoomLineList(items: appState.nextAvailable)
-            } else if !appState.availableNow.isEmpty {
-                RoomLineList(items: appState.availableNow)
+    private var roomsPanel: some View {
+        SagasuPanel(
+            title: "Room preview",
+            subtitle: "The menu bar window prioritizes what you can use next.",
+            systemImage: "building.2"
+        ) {
+            if preferredRooms.isEmpty {
+                SagasuEmptyStateCard(
+                    title: "Waiting for cached data",
+                    message: "No room availability has been written locally yet.",
+                    systemImage: "building.2.crop.circle"
+                )
             } else {
-                Text("No room availability has been cached locally yet.")
-                    .font(.callout)
+                VStack(spacing: 10) {
+                    ForEach(preferredRooms) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(item.title)
+                                    .font(.headline)
+                                    .lineLimit(1)
+
+                                Spacer(minLength: 0)
+
+                                Text(item.detail)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Text(item.context)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.primary.opacity(0.04))
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var actionsPanel: some View {
+        SagasuPanel(
+            title: "Quick actions",
+            subtitle: "The menu bar stays focused on the highest-frequency controls.",
+            systemImage: "bolt.fill"
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                Button(appState.isLoading ? "Refreshing…" : "Refresh Helper Snapshot", action: refreshSnapshot)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(appState.isLoading)
+
+                Button("Open Desktop Dashboard", action: openDashboard)
+                    .buttonStyle(.bordered)
+
+                Button("Quit", action: quitApplication)
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var runtimePanel: some View {
+        SagasuPanel(
+            title: "Runtime",
+            subtitle: "Quick context for the helper and auth stores backing this desktop client.",
+            systemImage: "info.circle"
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                LabeledContent("Last refresh", value: appState.formattedLastRefresh)
+                LabeledContent("Auth store", value: appState.authState.storage_mode.rawValue.capitalized)
+                LabeledContent("Helper mode", value: appState.helperModeDescription)
+                LabeledContent("Launch agent", value: appState.launchAgentDescription)
+
+                Text(appState.authState.runtime)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
     }
 
-    private var authSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Authentication")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            TextField("SMU email", text: $email)
-                .textFieldStyle(.roundedBorder)
-            SecureField("SMU password", text: $password)
-                .textFieldStyle(.roundedBorder)
-
-            HStack {
-                Button("Save to Keychain") {
-                    appState.saveCredentials(email: email, password: password)
-                    password = ""
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button("Clear") {
-                    appState.clearCredentials()
-                    email = ""
-                    password = ""
-                }
-                .buttonStyle(.bordered)
-            }
-        }
+    private var summaryColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
     }
 
-    private var helperSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Helper control")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            HStack {
-                ForEach(HelperRunMode.allCases) { mode in
-                    Button(appState.helperMode == mode ? "\(mode.title) running" : "Start \(mode.title)") {
-                        appState.startHelper(mode: mode)
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                Button("Stop") {
-                    appState.stopHelper()
-                }
-                .buttonStyle(.bordered)
-            }
+    private var preferredRooms: [AppState.RoomLine] {
+        if !appState.nextAvailable.isEmpty {
+            return Array(appState.nextAvailable.prefix(5))
         }
+
+        return Array(appState.availableNow.prefix(5))
     }
 
-    private var backgroundServiceSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Background service")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+    @ViewBuilder
+    private func heroPill(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.bold))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.78))
 
-            Text(appState.launchAgentDescription)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            HStack {
-                Button("Install") {
-                    appState.installBackgroundService()
-                }
-                .buttonStyle(.bordered)
-
-                Button("Start") {
-                    appState.startBackgroundService()
-                }
-                .buttonStyle(.bordered)
-
-                Button("Stop") {
-                    appState.stopBackgroundService()
-                }
-                .buttonStyle(.bordered)
-
-                Button("Remove") {
-                    appState.uninstallBackgroundService()
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-    }
-
-    private var actionsSection: some View {
-        VStack(spacing: 8) {
-            Button("Refresh Helper Snapshot") {
-                appState.refresh(manual: true)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(appState.isLoading)
-
-            Button("Open Desktop Dashboard") {
-                openWindow(id: "dashboard")
-            }
-            .buttonStyle(.bordered)
-
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("Last helper refresh: \(appState.formattedLastRefresh)")
-            Text("Auth store: \(appState.authState.storage_mode.rawValue.capitalized)")
-            Text("Helper mode: \(appState.helperModeDescription)")
-            Text("Launch agent: \(appState.launchAgentDescription)")
-            Text(appState.authState.runtime)
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-    }
-
-    private func color(for state: DatasetState) -> Color {
-        switch state {
-        case .idle: return .secondary
-        case .loading: return .orange
-        case .success: return .green
-        case .stale: return .yellow
-        case .failed: return .red
-        }
-    }
-}
-
-private struct SummaryTile: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
             Text(value)
-                .font(.title2.weight(.semibold))
-                .monospacedDigit()
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
-}
 
-private struct RoomLineList: View {
-    let items: [AppState.RoomLine]
-
-    var body: some View {
-        VStack(spacing: 6) {
-            ForEach(items) { item in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(item.title)
-                            .fontWeight(.medium)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(item.detail)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(item.context)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
+    @ViewBuilder
+    private func errorPanel(message: String) -> some View {
+        SagasuPanel(
+            title: "Helper warning",
+            subtitle: "The local helper reported an issue. Existing cached data is preserved where possible.",
+            systemImage: "exclamationmark.triangle.fill"
+        ) {
+            Text(message)
+                .font(.callout)
         }
+    }
+
+    private func saveCredentials() {
+        appState.saveCredentials(email: email, password: password)
+        password = ""
+    }
+
+    private func clearCredentials() {
+        appState.clearCredentials()
+        email = ""
+        password = ""
+    }
+
+    private func refreshSnapshot() {
+        appState.refresh(manual: true)
+    }
+
+    private func openDashboard() {
+        openWindow(id: "dashboard")
+    }
+
+    private func quitApplication() {
+        NSApplication.shared.terminate(nil)
     }
 }
