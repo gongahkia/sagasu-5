@@ -6,7 +6,7 @@
 # `Sagasu 3`
 
 <p align="center">
-    <img src="./asset/logo/logo-five.png" width=55% height=55%>
+    <img src="./asset/logo/logo-three.png" width=55% height=55%>
 </p>
 
 Run it back *(but as a MacOS menu bar & desktop app)*.
