@@ -60,7 +60,7 @@ struct ContentView: View {
     private var heroBanner: some View {
         SagasuHeroBanner(
             eyebrow: "Menu Bar Console",
-            title: "Sagasu 5",
+            title: "Sagasu 3",
             subtitle: "Native helper snapshots, credentials, and refresh controls stay one click away.",
             systemImage: "sparkles.rectangle.stack"
         ) {

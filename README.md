@@ -1,9 +1,9 @@
-[![](https://img.shields.io/badge/sagasu_5.0.0-passing-light_green)](https://github.com/gongahkia/sagasu-5/releases/tag/5.0.0)
-[![](https://img.shields.io/badge/sagasu_5.1.0-passing-green)](https://github.com/gongahkia/sagasu-5/releases/tag/5.1.0)
-![](https://github.com/gongahkia/sagasu-5/actions/workflows/macos-ci.yml/badge.svg)
-![](https://github.com/gongahkia/sagasu-5/actions/workflows/release-dmg.yml/badge.svg)
+[![](https://img.shields.io/badge/sagasu_3.0.0-passing-light_green)](https://github.com/gongahkia/sagasu-3/releases/tag/3.0.0)
+[![](https://img.shields.io/badge/sagasu_3.1.0-passing-green)](https://github.com/gongahkia/sagasu-3/releases/tag/3.1.0)
+![](https://github.com/gongahkia/sagasu-3/actions/workflows/macos-ci.yml/badge.svg)
+![](https://github.com/gongahkia/sagasu-3/actions/workflows/release-dmg.yml/badge.svg)
 
-# `Sagasu 5`
+# `Sagasu 3`
 
 <p align="center">
     <img src="./asset/logo/logo-five.png" width=55% height=55%>
@@ -30,12 +30,12 @@ See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github
 
 ## Usage
 
-The below instructions are for locally building and using `Sagasu 5`.
+The below instructions are for locally building and using `Sagasu 3`.
 
 1. First execute the below to install the repository.
 
 ```console
-$ git clone https://github.com/gongahkia/sagasu-5 && cd sagasu-5
+$ git clone https://github.com/gongahkia/sagasu-3 && cd sagasu-3
 ```
 
 2. Next install [XCode](https://apps.apple.com/us/app/xcode/id497799835?mt=12) from the Mac App Store.
@@ -92,13 +92,13 @@ flowchart LR
 
 ## Nerd stuff
 
-### Where is Sagasu 5 getting the data from?
+### Where is Sagasu 3 getting the data from?
 
-`Sagasu 5`'s desktop app reads a locally cached `snapshot.json` from the user's Application Support directory.
+`Sagasu 3`'s desktop app reads a locally cached `snapshot.json` from the user's Application Support directory.
 
-### What is Sagasu 5's helper service doing?
+### What is Sagasu 3's helper service doing?
 
-`Sagasu 5`'s helper currently supports the following.
+`Sagasu 3`'s helper currently supports the following.
 
 1. Manual refreshes via the app
 2. Scheduled refresh loop support via `sagasu-helper service`
@@ -108,13 +108,11 @@ flowchart LR
 
 ### Why are there 2 helpers?
 
-`Sagasu 5` will prefer XPC when a helper service is available and falls back to launching the bundled helper executable directly when it is not.
+`Sagasu 3` will prefer XPC when a helper service is available and falls back to launching the bundled helper executable directly when it is not.
 
 ## Other notes
 
-`Sagasu 5` is where it is today because of the below projects. 
+`Sagasu 3` is where it is today because of the below projects. 
 
 * [Sagasu](https://github.com/gongahkia/sagasu)
 * [Sagasu 2](https://github.com/gongahkia/sagasu-2)
-* [Sagasu 3](https://github.com/gongahkia/sagasu-3)
-* [Sagasu 4](https://github.com/gongahkia/sagasu-4)

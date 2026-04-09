@@ -1,4 +1,4 @@
-name: MacOS CI for Sagasu 5
+name: MacOS CI for Sagasu 3
 
 on:
   push:

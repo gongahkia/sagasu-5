@@ -1,4 +1,4 @@
-name: Build Sagasu 5 DMG and attach to Release
+name: Build Sagasu 3 DMG and attach to Release
 
 on:
   workflow_dispatch:
