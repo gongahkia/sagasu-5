@@ -15,15 +15,14 @@ struct DatasetHealthPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Dataset health",
-            subtitle: "Every helper refresh updates the cached rooms, bookings, and tasks payloads independently.",
             systemImage: "waveform.path.ecg.rectangle"
         ) {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(statuses) { status in
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(statuses.enumerated()), id: \.element.id) { index, status in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 10) {
                             Text(status.dataset.rawValue.capitalized)
-                                .font(.headline)
+                                .font(.callout.weight(.semibold))
 
                             Spacer(minLength: 0)
 
@@ -44,12 +43,11 @@ struct DatasetHealthPanel: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(SagasuTheme.stateColor(for: status.state).opacity(0.08))
-                    )
+                    .padding(.vertical, 8)
+
+                    if index < statuses.count - 1 {
+                        Divider()
+                    }
                 }
             }
         }
@@ -63,7 +61,6 @@ struct DashboardSelectionPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Selected detail",
-            subtitle: "Pick a room, booking, or task below to inspect the currently cached record.",
             systemImage: "sidebar.right"
         ) {
             Group {
@@ -166,7 +163,6 @@ struct RoomsPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Rooms",
-            subtitle: "The latest locally cached availability records.",
             systemImage: "door.left.hand.open"
         ) {
             if rooms.isEmpty {
@@ -222,7 +218,6 @@ struct BookingsPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Bookings",
-            subtitle: "Recent booking rows from the cached snapshot.",
             systemImage: "calendar.badge.clock"
         ) {
             if bookings.isEmpty {
@@ -271,7 +266,6 @@ struct TasksPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Tasks",
-            subtitle: "Recently cached task activity produced by the helper.",
             systemImage: "checklist"
         ) {
             if tasks.isEmpty {
@@ -318,7 +312,6 @@ struct HelperConsolePanel: View {
     var body: some View {
         SagasuPanel(
             title: "Helper console",
-            subtitle: "Stdout and stderr captured from the most recent helper runs.",
             systemImage: "terminal"
         ) {
             ScrollView {
@@ -328,9 +321,9 @@ struct HelperConsolePanel: View {
                     .textSelection(.enabled)
             }
             .frame(minHeight: 200)
-            .padding(14)
+            .padding(12)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.black.opacity(0.06))
             )
         }
@@ -358,10 +351,10 @@ private struct SelectableListCard<Content: View>: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(isSelected ? SagasuTheme.brand.opacity(0.14) : Color.primary.opacity(0.04))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .strokeBorder(
                                     isSelected ? SagasuTheme.brand.opacity(0.32) : Color.primary.opacity(0.06),
                                     lineWidth: 1

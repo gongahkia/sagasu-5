@@ -31,6 +31,11 @@ let package = Package(
                 .linkedFramework("WebKit")
             ]
         ),
+        .target(
+            name: "SagasuHelperCore",
+            dependencies: ["SagasuShared", "SagasuCore", "SagasuAutomationObjC"],
+            path: "Sources/HelperCore"
+        ),
         .executableTarget(
             name: "SagasuApp",
             dependencies: ["SagasuShared"],
@@ -38,12 +43,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "SagasuHelper",
-            dependencies: ["SagasuShared", "SagasuCore", "SagasuAutomationObjC"],
+            dependencies: ["SagasuShared", "SagasuCore", "SagasuAutomationObjC", "SagasuHelperCore"],
             path: "Sources/Helper"
         ),
         .testTarget(
             name: "SagasuTests",
-            dependencies: ["SagasuShared", "SagasuCore"],
+            dependencies: ["SagasuShared", "SagasuCore", "SagasuHelperCore"],
             path: "Tests/SagasuTests"
         )
     ]

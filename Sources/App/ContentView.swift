@@ -7,21 +7,170 @@ struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @State private var email: String = ""
     @State private var password: String = ""
+    @State private var showsRooms = true
+    @State private var showsDetails = true
+    @State private var expandedScrapeDetails: Set<String> = []
+    @State private var preferencesExpanded = false
+    @State private var controlsExpanded = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                heroBanner
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                metricsGrid
 
                 if let errorMessage = appState.errorMessage {
                     errorPanel(message: errorMessage)
                 }
 
-                snapshotOverviewPanel
+                if showsRooms {
+                    roomsPanel
+                }
 
+                if showsDetails {
+                    scrapeDetailsPanel
+                }
+
+                preferencesPanel
+                controlsPanel
+                footerPanel
+            }
+            .padding(10)
+        }
+        .background {
+            SagasuScreenBackground()
+        }
+        .frame(width: 420, height: 560)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Image(systemName: "building.2.crop.circle")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(SagasuTheme.brand)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Sagasu \(appState.rooms?.statistics.available_rooms ?? 0)")
+                    .font(.callout.weight(.semibold))
+
+                Text(appState.menuBarTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(appState.isLoading ? "Refreshing" : "Refresh", action: refreshSnapshot)
+                .disabled(appState.isLoading)
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private var metricsGrid: some View {
+        LazyVGrid(columns: metricColumns, spacing: 7) {
+            SagasuMetricCard(
+                title: "Free now",
+                value: String(appState.rooms?.statistics.available_rooms ?? 0),
+                detail: nil,
+                systemImage: "door.left.hand.open",
+                tint: SagasuTheme.success
+            )
+            SagasuMetricCard(
+                title: "Partial",
+                value: String(appState.rooms?.statistics.partially_available_rooms ?? 0),
+                detail: nil,
+                systemImage: "clock",
+                tint: .orange
+            )
+            SagasuMetricCard(
+                title: "Booked",
+                value: String(appState.rooms?.statistics.booked_rooms ?? 0),
+                detail: nil,
+                systemImage: "lock",
+                tint: SagasuTheme.brandSecondary
+            )
+            SagasuMetricCard(
+                title: "Total",
+                value: String(appState.rooms?.statistics.total_rooms ?? 0),
+                detail: nil,
+                systemImage: "square.grid.2x2",
+                tint: .secondary
+            )
+        }
+    }
+
+    private var roomsPanel: some View {
+        SagasuPanel(title: "Rooms next available", systemImage: "door.left.hand.open") {
+            if preferredRooms.isEmpty {
+                SagasuEmptyStateCard(
+                    title: "Waiting for rooms",
+                    message: "No room availability has been cached yet.",
+                    systemImage: "building.2"
+                )
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(preferredRooms.enumerated()), id: \.element.id) { index, item in
+                        SagasuRow(
+                            title: item.title,
+                            value: item.detail,
+                            systemImage: nil,
+                            tint: SagasuTheme.brand
+                        )
+
+                        if index < preferredRooms.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var scrapeDetailsPanel: some View {
+        SagasuPanel(title: "Scraping details", systemImage: "waveform.path.ecg.rectangle") {
+            VStack(spacing: 6) {
+                ForEach(scrapeSummaries) { summary in
+                    SagasuScrapeSummaryDisclosureCard(
+                        summary: summary,
+                        isExpanded: scrapeDetailExpansion(for: summary.id)
+                    )
+                }
+            }
+        }
+    }
+
+    private var preferencesPanel: some View {
+        DisclosureGroup(isExpanded: $preferencesExpanded) {
+            VStack(alignment: .leading, spacing: 5) {
+                Toggle("Rooms", isOn: $showsRooms)
+                Toggle("Details", isOn: $showsDetails)
+            }
+            .toggleStyle(.checkbox)
+            .padding(.top, 4)
+        } label: {
+            Text("Preferences")
+                .font(.callout.weight(.semibold))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(SagasuTheme.groupFill)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(SagasuTheme.separator, lineWidth: 1)
+                }
+        )
+    }
+
+    private var controlsPanel: some View {
+        DisclosureGroup(isExpanded: $controlsExpanded) {
+            VStack(alignment: .leading, spacing: 8) {
                 CredentialsPanel(
                     title: "Authentication",
-                    subtitle: "Store SMU credentials locally in the Keychain before refreshing.",
+                    subtitle: nil,
                     email: $email,
                     password: $password,
                     onSave: saveCredentials,
@@ -44,217 +193,138 @@ struct ContentView: View {
                     onStop: appState.stopBackgroundService,
                     onRemove: appState.uninstallBackgroundService
                 )
-
-                roomsPanel
-                actionsPanel
-                runtimePanel
             }
-            .padding(16)
+            .padding(.top, 8)
+        } label: {
+            Text("Controls")
+                .font(.callout.weight(.semibold))
         }
-        .background {
-            SagasuScreenBackground()
-        }
-        .frame(width: 460, height: 620)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
     }
 
-    private var heroBanner: some View {
-        SagasuHeroBanner(
-            eyebrow: "Menu Bar Console",
-            title: "Sagasu 3",
-            subtitle: "Native helper snapshots, credentials, and refresh controls stay one click away.",
-            systemImage: "sparkles.rectangle.stack"
-        ) {
-            HStack(spacing: 10) {
-                heroPill(
-                    title: "Free now",
-                    value: String(appState.rooms?.statistics.available_rooms ?? 0)
-                )
-                heroPill(title: "Refresh", value: appState.formattedLastRefresh)
-                heroPill(title: "Helper", value: appState.helperModeDescription)
-            }
+    private var footerPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+
+            menuActionButton("Open Desktop Dashboard", action: openDashboard)
+            Divider()
+            menuActionButton("Quit", action: quitApplication)
+            Divider()
+
+            SagasuFooterText(lastFetch: appState.formattedLastRefresh)
+                .padding(.top, 6)
         }
+        .padding(.horizontal, 8)
     }
 
-    private var snapshotOverviewPanel: some View {
-        SagasuPanel(
-            title: "Local snapshot",
-            subtitle: "A compact view of the helper-owned cache that drives the menu bar status.",
-            systemImage: "chart.bar.xaxis"
-        ) {
-            LazyVGrid(columns: summaryColumns, spacing: 10) {
-                SagasuMetricCard(
-                    title: "Free now",
-                    value: String(appState.rooms?.statistics.available_rooms ?? 0),
-                    detail: "Immediately available rooms",
-                    systemImage: "door.left.hand.open",
-                    tint: .green
-                )
-                SagasuMetricCard(
-                    title: "Partial",
-                    value: String(appState.rooms?.statistics.partially_available_rooms ?? 0),
-                    detail: "Rooms with mixed timeslots",
-                    systemImage: "clock.badge.exclamationmark",
-                    tint: .orange
-                )
-                SagasuMetricCard(
-                    title: "Bookings",
-                    value: String(appState.bookings?.statistics.total_bookings ?? 0),
-                    detail: "Cached booking rows",
-                    systemImage: "calendar",
-                    tint: SagasuTheme.brandSecondary
-                )
-                SagasuMetricCard(
-                    title: "Tasks",
-                    value: String(appState.tasks?.statistics.total_tasks ?? 0),
-                    detail: "Cached task rows",
-                    systemImage: "checklist",
-                    tint: SagasuTheme.brand
-                )
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(appState.statuses) { status in
-                    HStack {
-                        Text(status.dataset.rawValue.capitalized)
-                            .font(.subheadline.weight(.semibold))
-                        Spacer(minLength: 0)
-                        SagasuStatusPill(
-                            title: "Status",
-                            value: appState.formattedStatus(status),
-                            tint: SagasuTheme.stateColor(for: status.state)
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private var roomsPanel: some View {
-        SagasuPanel(
-            title: "Room preview",
-            subtitle: "The menu bar window prioritizes what you can use next.",
-            systemImage: "building.2"
-        ) {
-            if preferredRooms.isEmpty {
-                SagasuEmptyStateCard(
-                    title: "Waiting for cached data",
-                    message: "No room availability has been written locally yet.",
-                    systemImage: "building.2.crop.circle"
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(preferredRooms) { item in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(item.title)
-                                    .font(.headline)
-                                    .lineLimit(1)
-
-                                Spacer(minLength: 0)
-
-                                Text(item.detail)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Text(item.context)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.primary.opacity(0.04))
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private var actionsPanel: some View {
-        SagasuPanel(
-            title: "Quick actions",
-            subtitle: "The menu bar stays focused on the highest-frequency controls.",
-            systemImage: "bolt.fill"
-        ) {
-            VStack(alignment: .leading, spacing: 10) {
-                Button(appState.isLoading ? "Refreshing…" : "Refresh Helper Snapshot", action: refreshSnapshot)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(appState.isLoading)
-
-                Button("Open Desktop Dashboard", action: openDashboard)
-                    .buttonStyle(.bordered)
-
-                Button("Quit", action: quitApplication)
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    private var runtimePanel: some View {
-        SagasuPanel(
-            title: "Runtime",
-            subtitle: "Quick context for the helper and auth stores backing this desktop client.",
-            systemImage: "info.circle"
-        ) {
-            VStack(alignment: .leading, spacing: 8) {
-                LabeledContent("Last refresh", value: appState.formattedLastRefresh)
-                LabeledContent("Auth store", value: appState.authState.storage_mode.rawValue.capitalized)
-                LabeledContent("Helper mode", value: appState.helperModeDescription)
-                LabeledContent("Launch agent", value: appState.launchAgentDescription)
-
-                Text(appState.authState.runtime)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var summaryColumns: [GridItem] {
+    private var metricColumns: [GridItem] {
         [
-            GridItem(.flexible(), spacing: 10),
-            GridItem(.flexible(), spacing: 10)
+            GridItem(.flexible(), spacing: 7),
+            GridItem(.flexible(), spacing: 7)
         ]
     }
 
     private var preferredRooms: [AppState.RoomLine] {
         if !appState.nextAvailable.isEmpty {
-            return Array(appState.nextAvailable.prefix(5))
+            return Array(appState.nextAvailable.prefix(8))
         }
 
-        return Array(appState.availableNow.prefix(5))
+        return Array(appState.availableNow.prefix(8))
+    }
+
+    private var scrapeSummaries: [SagasuScrapeSummary] {
+        var summaries: [SagasuScrapeSummary] = []
+
+        if let rooms = appState.rooms {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "rooms",
+                    title: "Rooms",
+                    scrapedAt: appState.formattedScrapedAt(rooms.metadata.scraped_at),
+                    duration: "\(rooms.metadata.scrape_duration_ms) ms",
+                    state: rooms.metadata.success ? "Success" : (rooms.metadata.error ?? "Failed"),
+                    stateTint: rooms.metadata.success ? SagasuTheme.success : .red,
+                    detail: "\(rooms.config.date) \(rooms.config.start_time)-\(rooms.config.end_time)"
+                )
+            )
+        }
+
+        if let bookings = appState.bookings {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "bookings",
+                    title: "Bookings",
+                    scrapedAt: appState.formattedScrapedAt(bookings.metadata.scraped_at),
+                    duration: "\(bookings.metadata.scrape_duration_ms) ms",
+                    state: bookings.metadata.success ? "Success" : (bookings.metadata.error ?? "Failed"),
+                    stateTint: bookings.metadata.success ? SagasuTheme.success : .red,
+                    detail: nil
+                )
+            )
+        }
+
+        if let tasks = appState.tasks {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "tasks",
+                    title: "Tasks",
+                    scrapedAt: appState.formattedScrapedAt(tasks.metadata.scraped_at),
+                    duration: "\(tasks.metadata.scrape_duration_ms) ms",
+                    state: tasks.metadata.success ? "Success" : (tasks.metadata.error ?? "Failed"),
+                    stateTint: tasks.metadata.success ? SagasuTheme.success : .red,
+                    detail: nil
+                )
+            )
+        }
+
+        if summaries.isEmpty {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "empty",
+                    title: "Snapshot",
+                    scrapedAt: "Waiting for data",
+                    duration: "0 ms",
+                    state: "Idle",
+                    stateTint: .secondary,
+                    detail: nil
+                )
+            )
+        }
+
+        return summaries
     }
 
     @ViewBuilder
-    private func heroPill(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title.uppercased())
-                .font(.caption2.weight(.bold))
-                .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.78))
-
-            Text(value)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
+    private func menuActionButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.callout)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .buttonStyle(.plain)
+        .padding(.vertical, 7)
+    }
+
+    private func scrapeDetailExpansion(for id: String) -> Binding<Bool> {
+        Binding(
+            get: {
+                expandedScrapeDetails.contains(id)
+            },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedScrapeDetails.insert(id)
+                } else {
+                    expandedScrapeDetails.remove(id)
+                }
+            }
+        )
     }
 
     @ViewBuilder
     private func errorPanel(message: String) -> some View {
-        SagasuPanel(
-            title: "Helper warning",
-            subtitle: "The local helper reported an issue. Existing cached data is preserved where possible.",
-            systemImage: "exclamationmark.triangle.fill"
-        ) {
+        SagasuPanel(title: "Helper warning", systemImage: "exclamationmark.triangle.fill") {
             Text(message)
                 .font(.callout)
         }

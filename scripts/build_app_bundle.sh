@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 APP_NAME="Sagasu"
 BUNDLE_ID="com.gongahkia.sagasu"
-APP_VERSION="${APP_VERSION:-0.0.0}"
+GIT_TAG="$(git -C "$ROOT_DIR" describe --tags --abbrev=0 2>/dev/null || echo "")"
+APP_VERSION="${APP_VERSION:-${GIT_TAG:-0.0.0-dev}}"
 
 # Build the binary (existing script)
 "$ROOT_DIR/scripts/build.sh"

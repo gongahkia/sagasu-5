@@ -3,13 +3,13 @@ import SagasuAutomationObjC
 import SagasuCore
 import SagasuShared
 
-actor SagasuHelperService {
+public actor SagasuHelperService {
     private let store: SnapshotStore
     private let bootstrapper = ArchivedSnapshotBootstrapper()
     private let configProvider: () -> ScrapeConfiguration
     private let refreshScheduler = RefreshScheduler()
 
-    init(
+    public init(
         store: SnapshotStore,
         configProvider: @escaping () -> ScrapeConfiguration = { .load() }
     ) {
@@ -17,16 +17,16 @@ actor SagasuHelperService {
         self.configProvider = configProvider
     }
 
-    func currentSnapshot() async throws -> ServiceSnapshot {
+    public func currentSnapshot() async throws -> ServiceSnapshot {
         try await store.bootstrapSnapshotIfNeeded()
     }
 
-    func currentAuthState() async throws -> AuthState {
+    public func currentAuthState() async throws -> AuthState {
         let snapshot = try await currentSnapshot()
         return snapshot.auth_state
     }
 
-    func refresh(reason: String) async throws -> ServiceSnapshot {
+    public func refresh(reason: String) async throws -> ServiceSnapshot {
         let startedAt = Date()
         try await store.appendConsole("[\(startedAt.iso8601String)] helper refresh started (\(reason))")
 
@@ -102,7 +102,7 @@ actor SagasuHelperService {
         return snapshot
     }
 
-    func runServiceLoop() async throws {
+    public func runServiceLoop() async throws {
         while true {
             _ = try await refresh(reason: "scheduled-service-loop")
             let delay = refreshScheduler.nextRefreshDelay(from: Date())

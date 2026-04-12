@@ -9,22 +9,22 @@ private struct DataReplyBox: @unchecked Sendable {
     }
 }
 
-final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelperXPCProtocol {
+public final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelperXPCProtocol {
     private let service: SagasuHelperService
     private lazy var listener = NSXPCListener(machServiceName: HelperMachService.name)
 
-    init(service: SagasuHelperService) {
+    public init(service: SagasuHelperService) {
         self.service = service
         super.init()
     }
 
-    func run() {
+    public func run() {
         listener.delegate = self
         listener.resume()
         RunLoop.current.run()
     }
 
-    func currentSnapshot(reply: @escaping (Data?, NSError?) -> Void) {
+    public func currentSnapshot(reply: @escaping (Data?, NSError?) -> Void) {
         let service = self.service
         let replyBox = DataReplyBox(reply: reply)
         Task {
@@ -37,7 +37,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
         }
     }
 
-    func refresh(_ request: Data, reply: @escaping (Data?, NSError?) -> Void) {
+    public func refresh(_ request: Data, reply: @escaping (Data?, NSError?) -> Void) {
         let service = self.service
         let replyBox = DataReplyBox(reply: reply)
         Task {
@@ -51,7 +51,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
         }
     }
 
-    func authState(reply: @escaping (Data?, NSError?) -> Void) {
+    public func authState(reply: @escaping (Data?, NSError?) -> Void) {
         let service = self.service
         let replyBox = DataReplyBox(reply: reply)
         Task {
@@ -64,7 +64,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
         }
     }
 
-    func storeCredentials(_ credentials: Data, reply: @escaping (NSError?) -> Void) {
+    public func storeCredentials(_ credentials: Data, reply: @escaping (NSError?) -> Void) {
         do {
             let decoded = try JSONDecoder().decode(SharedCredentials.self, from: credentials)
             try SharedCredentialsStore.save(decoded)
@@ -74,7 +74,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
         }
     }
 
-    func clearCredentials(reply: @escaping (NSError?) -> Void) {
+    public func clearCredentials(reply: @escaping (NSError?) -> Void) {
         do {
             try SharedCredentialsStore.clear()
             reply(nil)
@@ -83,7 +83,7 @@ final class SagasuHelperXPCService: NSObject, NSXPCListenerDelegate, SagasuHelpe
         }
     }
 
-    func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
+    public func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
         newConnection.exportedInterface = NSXPCInterface(with: SagasuHelperXPCProtocol.self)
         newConnection.exportedObject = self
         newConnection.resume()

@@ -1,5 +1,31 @@
 import Foundation
+import OSLog
 import SagasuAutomationObjC
+import SagasuShared
+
+private let automationLogger = Logger.sagasu(category: "automation")
+
+// pure, testable retry core used by NativeAutomationDriver
+func retryWithBackoffImpl( // exponential backoff: delay = baseDelay * 2^(attempt-1)
+    maxAttempts: Int,
+    baseDelay: TimeInterval,
+    sleep: (Int) -> Void,
+    logger: Logger? = automationLogger,
+    operation: () throws -> Void
+) throws {
+    precondition(maxAttempts >= 1, "maxAttempts must be >= 1")
+    for attempt in 1...maxAttempts {
+        do {
+            try operation()
+            return
+        } catch {
+            if attempt == maxAttempts { throw error }
+            let delayMs = Int(baseDelay * pow(2.0, Double(attempt - 1)) * 1000)
+            logger?.warning("retry attempt \(attempt, privacy: .public)/\(maxAttempts, privacy: .public) failed, sleeping \(delayMs, privacy: .public)ms: \(String(describing: error), privacy: .public)")
+            sleep(delayMs)
+        }
+    }
+}
 
 enum NativeAutomationError: LocalizedError {
     case actionFailed(String)
@@ -16,7 +42,9 @@ final class NativeAutomationDriver {
     private let session = SagasuAutomationSession()
 
     func load(_ url: String, timeout: TimeInterval = 60) throws {
-        _ = try session.loadURLString(url, timeout: timeout)
+        try retryWithBackoff { [session] in
+            _ = try session.loadURLString(url, timeout: timeout)
+        }
     }
 
     func currentURL() -> String? {
@@ -32,11 +60,15 @@ final class NativeAutomationDriver {
     }
 
     func waitForURL(_ pattern: String, timeout: TimeInterval = 30) throws {
-        _ = try session.waitForURL(matching: pattern, timeout: timeout)
+        try retryWithBackoff { [session] in
+            _ = try session.waitForURL(matching: pattern, timeout: timeout)
+        }
     }
 
     func waitFor(scriptCondition script: String, timeout: TimeInterval = 30, pollInterval: TimeInterval = 0.25) throws {
-        _ = try session.wait(forJavaScriptCondition: script, timeout: timeout, pollInterval: pollInterval)
+        try retryWithBackoff { [session] in
+            _ = try session.wait(forJavaScriptCondition: script, timeout: timeout, pollInterval: pollInterval)
+        }
     }
 
     func evaluate(_ script: String) throws -> Any? {
@@ -215,5 +247,18 @@ final class NativeAutomationDriver {
             .replacingOccurrences(of: "\"", with: "\\\"")
             .replacingOccurrences(of: "\n", with: "\\n")
         return "\"\(escaped)\""
+    }
+
+    private func retryWithBackoff( // 3 attempts, exponential backoff starting at 2s
+        maxAttempts: Int = 3,
+        baseDelay: TimeInterval = 2.0,
+        operation: () throws -> Void
+    ) throws {
+        try retryWithBackoffImpl(
+            maxAttempts: maxAttempts,
+            baseDelay: baseDelay,
+            sleep: { [session] ms in session.sleep(forMilliseconds: ms) },
+            operation: operation
+        )
     }
 }

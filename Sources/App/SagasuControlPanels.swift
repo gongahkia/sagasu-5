@@ -13,21 +13,26 @@ struct CredentialsPanel: View {
         SagasuPanel(
             title: title,
             subtitle: subtitle,
-            systemImage: "person.crop.circle.badge.key"
+            systemImage: "person.crop.circle.badge.key",
+            showsIcon: false
         ) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
                 TextField("SMU email", text: $email)
                     .textFieldStyle(.roundedBorder)
+                    .controlSize(.small)
 
                 SecureField("SMU password", text: $password)
                     .textFieldStyle(.roundedBorder)
+                    .controlSize(.small)
 
-                HStack(spacing: 10) {
+                HStack(spacing: 7) {
                     Button("Save to Keychain", action: onSave)
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
 
                     Button("Clear Credentials", action: onClear)
                         .buttonStyle(.bordered)
+                        .controlSize(.small)
                 }
             }
         }
@@ -43,23 +48,24 @@ struct HelperControlsPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Helper control",
-            subtitle: "Start the helper directly for ad-hoc refreshes or XPC integration.",
-            systemImage: "cpu"
+            systemImage: "cpu",
+            showsIcon: false
         ) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
                 SagasuStatusPill(
                     title: "Mode",
                     value: currentDescription,
                     tint: currentMode == nil ? .secondary : SagasuTheme.brand
                 )
 
-                HStack(spacing: 10) {
+                HStack(spacing: 7) {
                     ForEach(HelperRunMode.allCases) { mode in
                         helperButton(for: mode)
                     }
 
                     Button("Stop", action: onStop)
                         .buttonStyle(.bordered)
+                        .controlSize(.small)
                 }
             }
         }
@@ -72,11 +78,13 @@ struct HelperControlsPanel: View {
                 onStart(mode)
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.small)
         } else {
             Button("Start \(mode.title)") {
                 onStart(mode)
             }
             .buttonStyle(.bordered)
+            .controlSize(.small)
         }
     }
 }
@@ -93,10 +101,10 @@ struct BackgroundServicePanel: View {
     var body: some View {
         SagasuPanel(
             title: "Background service",
-            subtitle: "Install a LaunchAgent when you want scheduled refreshes to keep local data current.",
-            systemImage: "clock.arrow.2.circlepath"
+            systemImage: "clock.arrow.2.circlepath",
+            showsIcon: false
         ) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
                 SagasuStatusPill(
                     title: "Launch agent",
                     value: summary,
@@ -117,15 +125,19 @@ struct BackgroundServicePanel: View {
                 LazyVGrid(columns: actionColumns, spacing: 10) {
                     Button("Install", action: onInstall)
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
 
                     Button("Start", action: onStart)
                         .buttonStyle(.bordered)
+                        .controlSize(.small)
 
                     Button("Stop", action: onStop)
                         .buttonStyle(.bordered)
+                        .controlSize(.small)
 
                     Button("Remove", action: onRemove)
                         .buttonStyle(.bordered)
+                        .controlSize(.small)
                 }
             }
         }
@@ -171,7 +183,6 @@ struct ScrapePreferencesPanel: View {
     var body: some View {
         SagasuPanel(
             title: "Scrape preferences",
-            subtitle: "Tune the helper inputs that shape the next refresh payload.",
             systemImage: "slider.horizontal.3"
         ) {
             VStack(alignment: .leading, spacing: 12) {

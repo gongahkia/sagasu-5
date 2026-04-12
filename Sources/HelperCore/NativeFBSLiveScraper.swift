@@ -3,6 +3,13 @@ import SagasuAutomationObjC
 import SagasuCore
 import SagasuShared
 
+// pure helpers extracted for unit testing (no WebKit deps)
+enum NativeFBSLiveScraperHelpers {
+    static func retryDelayMilliseconds(for attempt: Int) -> Int {
+        1500 * max(1, attempt)
+    }
+}
+
 struct PartialScrapeOutputs {
     var rooms: Result<ScrapedRoomsResponse, Error>?
     var bookings: Result<ScrapedBookingsResponse, Error>?
@@ -300,7 +307,7 @@ final class NativeFBSLiveScraper {
     }
 
     private func retryDelayMilliseconds(for attempt: Int) -> Int {
-        1500 * max(1, attempt)
+        NativeFBSLiveScraperHelpers.retryDelayMilliseconds(for: attempt)
     }
 
     private func captureDiagnostics(

@@ -12,43 +12,14 @@ struct DesktopDashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    heroBanner
+                VStack(alignment: .leading, spacing: 16) {
+                    dashboardHeader
 
                     if let errorMessage = appState.errorMessage {
                         errorPanel(message: errorMessage)
                     }
 
-                    LazyVGrid(columns: summaryColumns, spacing: 12) {
-                        SagasuMetricCard(
-                            title: "Free now",
-                            value: String(appState.rooms?.statistics.available_rooms ?? 0),
-                            detail: "Immediate room availability",
-                            systemImage: "door.left.hand.open",
-                            tint: .green
-                        )
-                        SagasuMetricCard(
-                            title: "Partial rooms",
-                            value: String(appState.rooms?.statistics.partially_available_rooms ?? 0),
-                            detail: "Rooms with mixed occupancy",
-                            systemImage: "clock.badge.exclamationmark",
-                            tint: .orange
-                        )
-                        SagasuMetricCard(
-                            title: "Bookings",
-                            value: String(appState.bookings?.statistics.total_bookings ?? 0),
-                            detail: "Cached booking records",
-                            systemImage: "calendar",
-                            tint: SagasuTheme.brandSecondary
-                        )
-                        SagasuMetricCard(
-                            title: "Tasks",
-                            value: String(appState.tasks?.statistics.total_tasks ?? 0),
-                            detail: "Cached task records",
-                            systemImage: "checklist",
-                            tint: SagasuTheme.brand
-                        )
-                    }
+                    metricsGrid
 
                     LazyVGrid(columns: dashboardColumns, spacing: 16) {
                         DatasetHealthPanel(
@@ -57,14 +28,37 @@ struct DesktopDashboardView: View {
                             formattedTimestamp: appState.formattedScrapedAt
                         )
 
+                        scrapeDetailsPanel
+
                         DashboardSelectionPanel(
                             selection: currentSelection,
                             formattedTimestamp: appState.formattedScrapedAt
                         )
 
+                        runtimePanel
+
+                        RoomsPanel(
+                            rooms: appState.rooms?.rooms ?? [],
+                            selectedRoomID: selectedRoomID,
+                            onSelect: selectRoom,
+                            formattedTimestamp: appState.formattedScrapedAt
+                        )
+
+                        BookingsPanel(
+                            bookings: appState.recentBookings,
+                            selectedBookingID: selectedBookingID,
+                            onSelect: selectBooking
+                        )
+
+                        TasksPanel(
+                            tasks: appState.recentTasks,
+                            selectedTaskID: selectedTaskID,
+                            onSelect: selectTask
+                        )
+
                         CredentialsPanel(
                             title: "Authentication",
-                            subtitle: "Store credentials before running helper refreshes against the source system.",
+                            subtitle: nil,
                             email: $email,
                             password: $password,
                             onSave: saveCredentials,
@@ -92,77 +86,120 @@ struct DesktopDashboardView: View {
                             preferences: scrapePreferencesBinding,
                             onSave: appState.saveScrapePreferences
                         )
-
-                        RoomsPanel(
-                            rooms: appState.rooms?.rooms ?? [],
-                            selectedRoomID: selectedRoomID,
-                            onSelect: selectRoom,
-                            formattedTimestamp: appState.formattedScrapedAt
-                        )
-
-                        BookingsPanel(
-                            bookings: appState.recentBookings,
-                            selectedBookingID: selectedBookingID,
-                            onSelect: selectBooking
-                        )
-
-                        TasksPanel(
-                            tasks: appState.recentTasks,
-                            selectedTaskID: selectedTaskID,
-                            onSelect: selectTask
-                        )
-
-                        runtimePanel
                     }
 
                     HelperConsolePanel(console: appState.helperConsole)
                 }
-                .padding(24)
+                .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .navigationTitle("Sagasu Desktop")
+            .navigationTitle("Sagasu")
             .background {
                 SagasuScreenBackground()
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(appState.isLoading ? "Refreshing…" : "Refresh Now", action: refreshNow)
-                    .disabled(appState.isLoading)
+                    Button(appState.isLoading ? "Refreshing..." : "Refresh Now", action: refreshNow)
+                        .disabled(appState.isLoading)
                 }
             }
         }
         .frame(minWidth: 1100, minHeight: 760)
     }
 
-    private var heroBanner: some View {
-        SagasuHeroBanner(
-            eyebrow: "Desktop Dashboard",
-            title: "Local snapshot control room",
-            subtitle: "Monitor helper health, refine scrape inputs, and inspect cached room, booking, and task data from one desktop surface.",
-            systemImage: "rectangle.3.group.bubble.left.fill"
-        ) {
-            HStack(spacing: 12) {
-                heroPill(title: "Last refresh", value: appState.formattedLastRefresh)
-                heroPill(title: "Auth", value: appState.authState.storage_mode.rawValue.capitalized)
-                heroPill(title: "Launch agent", value: appState.launchAgentDescription)
+    private var dashboardHeader: some View {
+        SagasuPanel(title: "Sagasu Desktop", systemImage: "building.2.crop.circle") {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(appState.menuBarTitle)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+
+                    Text("Last fetch \(appState.formattedLastRefresh)")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                SagasuStatusPill(
+                    title: "Auth",
+                    value: appState.authState.storage_mode.rawValue.capitalized,
+                    tint: appState.authState.has_credentials ? SagasuTheme.success : .secondary
+                )
+
+                SagasuStatusPill(
+                    title: "Helper",
+                    value: appState.helperModeDescription,
+                    tint: appState.helperMode == nil ? .secondary : SagasuTheme.brand
+                )
+
+                SagasuStatusPill(
+                    title: "Agent",
+                    value: appState.launchAgentDescription,
+                    tint: appState.launchAgentStatus?.isLoaded == true ? SagasuTheme.success : .secondary
+                )
+            }
+        }
+    }
+
+    private var metricsGrid: some View {
+        LazyVGrid(columns: summaryColumns, spacing: 12) {
+            SagasuMetricCard(
+                title: "Free now",
+                value: String(appState.rooms?.statistics.available_rooms ?? 0),
+                detail: "Immediate room availability",
+                systemImage: "door.left.hand.open",
+                tint: SagasuTheme.success
+            )
+            SagasuMetricCard(
+                title: "Partial",
+                value: String(appState.rooms?.statistics.partially_available_rooms ?? 0),
+                detail: "Rooms with mixed availability",
+                systemImage: "clock.badge.exclamationmark",
+                tint: .orange
+            )
+            SagasuMetricCard(
+                title: "Booked",
+                value: String(appState.rooms?.statistics.booked_rooms ?? 0),
+                detail: "Unavailable rooms",
+                systemImage: "lock",
+                tint: SagasuTheme.brandSecondary
+            )
+            SagasuMetricCard(
+                title: "Total",
+                value: String(appState.rooms?.statistics.total_rooms ?? 0),
+                detail: "Cached room rows",
+                systemImage: "square.grid.2x2",
+                tint: .secondary
+            )
+        }
+    }
+
+    private var scrapeDetailsPanel: some View {
+        SagasuPanel(title: "Scraping details", systemImage: "waveform.path.ecg.rectangle") {
+            VStack(spacing: 10) {
+                ForEach(scrapeSummaries) { summary in
+                    SagasuScrapeSummaryCard(summary: summary)
+                }
             }
         }
     }
 
     private var runtimePanel: some View {
-        SagasuPanel(
-            title: "Runtime",
-            subtitle: "Environment details that shape how the helper and desktop shell are currently operating.",
-            systemImage: "info.circle"
-        ) {
-            VStack(alignment: .leading, spacing: 8) {
-                LabeledContent("Last refresh", value: appState.formattedLastRefresh)
-                LabeledContent("Auth store", value: appState.authState.storage_mode.rawValue.capitalized)
-                LabeledContent("Helper mode", value: appState.helperModeDescription)
-                LabeledContent("Launch agent", value: appState.launchAgentDescription)
+        SagasuPanel(title: "Runtime", systemImage: "info.circle") {
+            VStack(alignment: .leading, spacing: 0) {
+                SagasuRow(title: "Last refresh", value: appState.formattedLastRefresh)
+                Divider()
+                SagasuRow(title: "Auth store", value: appState.authState.storage_mode.rawValue.capitalized)
+                Divider()
+                SagasuRow(title: "Helper mode", value: appState.helperModeDescription)
+                Divider()
+                SagasuRow(title: "Launch agent", value: appState.launchAgentDescription)
+
                 Text(appState.authState.runtime)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 8)
             }
         }
     }
@@ -197,7 +234,7 @@ struct DesktopDashboardView: View {
 
     private var summaryColumns: [GridItem] {
         [
-            GridItem(.adaptive(minimum: 220), spacing: 12)
+            GridItem(.adaptive(minimum: 210), spacing: 12)
         ]
     }
 
@@ -215,31 +252,71 @@ struct DesktopDashboardView: View {
         )
     }
 
-    @ViewBuilder
-    private func heroPill(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title.uppercased())
-                .font(.caption2.weight(.bold))
-                .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.78))
+    private var scrapeSummaries: [SagasuScrapeSummary] {
+        var summaries: [SagasuScrapeSummary] = []
 
-            Text(value)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
+        if let rooms = appState.rooms {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "rooms",
+                    title: "Rooms",
+                    scrapedAt: appState.formattedScrapedAt(rooms.metadata.scraped_at),
+                    duration: "\(rooms.metadata.scrape_duration_ms) ms",
+                    state: rooms.metadata.success ? "Success" : (rooms.metadata.error ?? "Failed"),
+                    stateTint: rooms.metadata.success ? SagasuTheme.success : .red,
+                    detail: "\(rooms.config.date) \(rooms.config.start_time)-\(rooms.config.end_time)"
+                )
+            )
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+        if let bookings = appState.bookings {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "bookings",
+                    title: "Bookings",
+                    scrapedAt: appState.formattedScrapedAt(bookings.metadata.scraped_at),
+                    duration: "\(bookings.metadata.scrape_duration_ms) ms",
+                    state: bookings.metadata.success ? "Success" : (bookings.metadata.error ?? "Failed"),
+                    stateTint: bookings.metadata.success ? SagasuTheme.success : .red,
+                    detail: nil
+                )
+            )
+        }
+
+        if let tasks = appState.tasks {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "tasks",
+                    title: "Tasks",
+                    scrapedAt: appState.formattedScrapedAt(tasks.metadata.scraped_at),
+                    duration: "\(tasks.metadata.scrape_duration_ms) ms",
+                    state: tasks.metadata.success ? "Success" : (tasks.metadata.error ?? "Failed"),
+                    stateTint: tasks.metadata.success ? SagasuTheme.success : .red,
+                    detail: nil
+                )
+            )
+        }
+
+        if summaries.isEmpty {
+            summaries.append(
+                SagasuScrapeSummary(
+                    id: "empty",
+                    title: "Snapshot",
+                    scrapedAt: "Waiting for data",
+                    duration: "0 ms",
+                    state: "Idle",
+                    stateTint: .secondary,
+                    detail: nil
+                )
+            )
+        }
+
+        return summaries
     }
 
     @ViewBuilder
     private func errorPanel(message: String) -> some View {
-        SagasuPanel(
-            title: "Helper warning",
-            subtitle: "The helper surfaced an error during the last refresh cycle.",
-            systemImage: "exclamationmark.triangle.fill"
-        ) {
+        SagasuPanel(title: "Helper warning", systemImage: "exclamationmark.triangle.fill") {
             Text(message)
                 .font(.callout)
         }
