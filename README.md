@@ -104,7 +104,7 @@ flowchart LR
 2. Scheduled refresh loop support via `sagasu-helper service`
 3. XPC service scaffolding via `sagasu-helper xpc-service`
 4. Keychain-backed credential storage
-5. `Sagasu 4` fixture bootstrapping when no live native browser run has been completed yet *(Archived)*
+5. `Sagasu 2` fixture bootstrapping when no live native browser run has been completed yet
 
 ### Why are there 2 helpers?
 
