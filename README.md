@@ -22,10 +22,25 @@ See [this](https://github.com/gongahkia/sagasu#rationale), [this](https://github
 
 ## Screenshots
 
+### Menu Bar App
+
 <div align="center">
-    <img src="./asset/reference/1.png" width="32%">
-    <img src="./asset/reference/2.png" width="32%">
-    <img src="./asset/reference/3.png" width="32%">
+    <img src="./asset/reference/v2/1.png" width="45%">
+    <img src="./asset/reference/v2/2.png" width="45%">
+</div>
+
+### Desktop App
+
+<div align="center">
+    <img src="./asset/reference/v2/3.png" width="32%">
+    <img src="./asset/reference/v2/4.png" width="32%">
+    <img src="./asset/reference/v2/5.png" width="32%">
+</div>
+
+<div align="center">
+    <img src="./asset/reference/v2/6.png" width="32%">
+    <img src="./asset/reference/v2/7.png" width="32%">
+    <img src="./asset/reference/v2/8.png" width="32%">
 </div>
 
 ## Usage
