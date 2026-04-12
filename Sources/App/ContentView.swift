@@ -143,12 +143,12 @@ struct ContentView: View {
 
     private var preferencesPanel: some View {
         DisclosureGroup(isExpanded: $preferencesExpanded) {
-            VStack(alignment: .leading, spacing: 5) {
-                Toggle("Rooms", isOn: $showsRooms)
-                Toggle("Details", isOn: $showsDetails)
+            VStack(alignment: .leading, spacing: 0) {
+                compactToggleRow("Rooms", isOn: $showsRooms)
+                Divider()
+                compactToggleRow("Details", isOn: $showsDetails)
             }
-            .toggleStyle(.checkbox)
-            .padding(.top, 4)
+            .padding(.top, 3)
         } label: {
             Text("Preferences")
                 .font(.callout.weight(.semibold))
@@ -305,6 +305,16 @@ struct ContentView: View {
         }
         .buttonStyle(.plain)
         .padding(.vertical, 7)
+    }
+
+    @ViewBuilder
+    private func compactToggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.caption)
+        }
+        .toggleStyle(.checkbox)
+        .padding(.vertical, 3)
     }
 
     private func scrapeDetailExpansion(for id: String) -> Binding<Bool> {

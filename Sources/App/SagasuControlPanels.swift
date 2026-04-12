@@ -51,14 +51,10 @@ struct HelperControlsPanel: View {
             systemImage: "cpu",
             showsIcon: false
         ) {
-            VStack(alignment: .leading, spacing: 8) {
-                SagasuStatusPill(
-                    title: "Mode",
-                    value: currentDescription,
-                    tint: currentMode == nil ? .secondary : SagasuTheme.brand
-                )
+            VStack(alignment: .leading, spacing: 6) {
+                SagasuRow(title: "Mode", value: currentDescription)
 
-                HStack(spacing: 7) {
+                HStack(spacing: 6) {
                     ForEach(HelperRunMode.allCases) { mode in
                         helperButton(for: mode)
                     }
@@ -104,12 +100,8 @@ struct BackgroundServicePanel: View {
             systemImage: "clock.arrow.2.circlepath",
             showsIcon: false
         ) {
-            VStack(alignment: .leading, spacing: 8) {
-                SagasuStatusPill(
-                    title: "Launch agent",
-                    value: summary,
-                    tint: statusTint
-                )
+            VStack(alignment: .leading, spacing: 6) {
+                SagasuRow(title: "Launch agent", value: summary)
 
                 if showsPaths, let status {
                     VStack(alignment: .leading, spacing: 8) {
@@ -122,7 +114,7 @@ struct BackgroundServicePanel: View {
                     }
                 }
 
-                LazyVGrid(columns: actionColumns, spacing: 10) {
+                HStack(spacing: 6) {
                     Button("Install", action: onInstall)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
@@ -141,13 +133,6 @@ struct BackgroundServicePanel: View {
                 }
             }
         }
-    }
-
-    private var actionColumns: [GridItem] {
-        [
-            GridItem(.flexible(), spacing: 10),
-            GridItem(.flexible(), spacing: 10)
-        ]
     }
 
     private var statusTint: Color {
